@@ -24,6 +24,9 @@ function App() {
             <i className="bi bi-whatsapp"></i> WhatsApp
           </a>
         </div>
+        <h3 className="mt-3">Remeras</h3>
+        <img src="/remeras.png" alt="remeras" style={{ width: '600px',}} />
+
       </main>
     </>
   );
