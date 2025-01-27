@@ -1,0 +1,19 @@
+/* Reseteo y box-sizing */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  /* Asegurar que html y body ocupen 100% de ancho */
+  html, body {
+    width: 100%;
+    /* Agrega esta línea si sigue apareciendo scroll horizontal */
+    /* overflow-x: hidden; */
+  }
+  
+  /* Limitar el ancho máximo, pero mantener 100% en pantallas chicas */
+  body {
+    max-width: 768px;   /* Tamaño máximo en pantallas grandes */
+    margin: 0 auto;     /* Centrar horizontalmente */
+  }

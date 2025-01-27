@@ -1,0 +1,31 @@
+/*navbar.css*/
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px 10px 20px;
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-logo {
+    width: 90px;
+    height: auto;
+}
+
+.navbar-center {
+    flex: 1;
+    text-align: center;
+}
+
+.navbar-city {
+    font-size: 1rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+.navbar-title {
+    font-size: 1.5rem;
+    color: #343a40;
+    margin: 0;
+}
