@@ -1,40 +1,62 @@
-import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination } from 'swiper/modules';
-import '../../Styles/SlideMenu.css';
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Navigation, Pagination, Autoplay } from "swiper/modules";
+import PropTypes from "prop-types";
+import "../../Styles/SlideMenu.css";
 
 // Importar estilos de Swiper
-import 'swiper/css';
-import 'swiper/css/navigation';
-import 'swiper/css/pagination';
+import "swiper/css";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
+import "swiper/css/autoplay";
 
-const SlideMenu = () => {
-    const menuSections = [
-        { id: 1, title: 'Caferería', description: 'Variedad de cafés' },
-        { id: 2, title: 'Tés', description: 'Variedad de tés' },
-        { id: 3, title: 'Pasteles', description: 'Deliciosos pasteles' },
-        { id: 4, title: 'Sandwiches', description: 'Sandwiches frescos' },
-    ];
+const SlideMenu = ({ sections, onSelectSection }) => {
+  return (
+    <div className="slide-menu">
+      <Swiper
+        modules={[Navigation, Pagination, Autoplay]}
+        navigation
+        pagination={{ clickable: true }}
+        spaceBetween={50}
+        slidesPerView={1}
+        autoplay={{
+          delay: 3000,
+          disableOnInteraction: false,
+        }}
+        onSlideChange={(swiper) => {
+          // Cuando cambia el slide (por swipe/autoplay), actualizamos la sección
+          const currentIndex = swiper.activeIndex;
+          const currentSection = sections[currentIndex];
+          if (currentSection) {
+            onSelectSection(currentSection);
+          }
+        }}
+      >
+        {sections.map((section) => (
+          <SwiperSlide
+            key={section.id}
+            // Además, si quieres permitir clic manual:
+            onClick={() => onSelectSection(section)}
+          >
+            <div className="menu-section text-center">
+              <h2>{section.nombre}</h2>
+              {section.description && <p>{section.description}</p>}
+            </div>
+          </SwiperSlide>
+        ))}
+      </Swiper>
+    </div>
+  );
+};
 
-    return (
-        <div className="slide-menu">
-            <Swiper
-                modules={[Navigation, Pagination]} // Agregar módulos necesarios
-                navigation                     // Habilitar navegación (flechas)
-                pagination={{ clickable: true }} // Habilitar paginación (puntos clicables)
-                spaceBetween={50}               // Espacio entre slides
-                slidesPerView={1}               // Número de slides visibles
-            >
-                {menuSections.map((section) => (
-                    <SwiperSlide key={section.id}>
-                        <div className="menu-section text-center">
-                            <h2>{section.title}</h2>
-                            <p>{section.description}</p>
-                        </div>
-                    </SwiperSlide>
-                ))}
-            </Swiper>
-        </div>
-    );
+SlideMenu.propTypes = {
+  sections: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      nombre: PropTypes.string,
+      description: PropTypes.string,
+    })
+  ).isRequired,
+  onSelectSection: PropTypes.func.isRequired,
 };
 
 export default SlideMenu;
