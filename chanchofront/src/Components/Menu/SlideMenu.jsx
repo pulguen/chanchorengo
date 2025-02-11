@@ -10,35 +10,34 @@ import "swiper/css/pagination";
 import "swiper/css/autoplay";
 
 const SlideMenu = ({ sections, onSelectSection }) => {
+  if (!sections || sections.length === 0) {
+    return <p className="text-center">No hay secciones disponibles.</p>;
+  }
+
   return (
     <div className="slide-menu">
       <Swiper
+        key={sections.length} // 🔥 🔄 Forzar actualización cuando cambia la lista
         modules={[Navigation, Pagination, Autoplay]}
         navigation
         pagination={{ clickable: true }}
-        spaceBetween={50}
+        spaceBetween={30}
         slidesPerView={1}
         autoplay={{
           delay: 3000,
           disableOnInteraction: false,
         }}
         onSlideChange={(swiper) => {
-          // Cuando cambia el slide (por swipe/autoplay), actualizamos la sección
           const currentIndex = swiper.activeIndex;
-          const currentSection = sections[currentIndex];
-          if (currentSection) {
-            onSelectSection(currentSection);
+          if (sections[currentIndex]) {
+            onSelectSection(sections[currentIndex]);
           }
         }}
       >
         {sections.map((section) => (
-          <SwiperSlide
-            key={section.id}
-            // Además, si quieres permitir clic manual:
-            onClick={() => onSelectSection(section)}
-          >
-            <div className="menu-section text-center">
-              <h2>{section.nombre}</h2>
+          <SwiperSlide key={section.id} onClick={() => onSelectSection(section)}>
+            <div className="menu-section text-center p-3">
+              <h2 className="mb-2">{section.nombre}</h2>
               {section.description && <p>{section.description}</p>}
             </div>
           </SwiperSlide>

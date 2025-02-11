@@ -1,339 +1,555 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "../../Firebase/firebase";
-
-// Importamos las funciones de Firestore que usaremos
 import {
   collection,
   doc,
   onSnapshot,
   addDoc,
   deleteDoc,
+  updateDoc,
+  query,
+  orderBy,
 } from "firebase/firestore";
+import {
+  DndContext,
+  closestCenter,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  KeyboardSensor,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import SortableItem from "./SortableItem"; // Componente de elementos ordenables
+import Swal from "sweetalert2";
 
 const Admin = () => {
-  // ----------------- ESTADOS PARA SECCIONES -----------------
-  const [secciones, setSecciones] = useState([]);      // Lista de secciones
-  const [nuevaSeccion, setNuevaSeccion] = useState(""); // Para crear una sección
-
-  // ----------------- SECCIÓN SELECCIONADA + SUS ARTÍCULOS -----------------
+  // Estados para secciones
+  const [secciones, setSecciones] = useState([]);
+  const [nuevaSeccion, setNuevaSeccion] = useState("");
+  const [editSeccionId, setEditSeccionId] = useState(null);
+  const [editNombreSeccion, setEditNombreSeccion] = useState("");
   const [seccionSeleccionada, setSeccionSeleccionada] = useState(null);
   const [articulos, setArticulos] = useState([]);
 
-  // ----------------- CREACIÓN DE UN NUEVO ARTÍCULO -----------------
+  // Estados para artículos  
+  // Actualizamos el estado inicial con la nueva estructura
   const [nuevoArticulo, setNuevoArticulo] = useState({
     nombre: "",
     ingredientes: "",
-    adicional: { nombre: "", tamaño: "", precio: 0 },
-    tamaño: { nombre: "", precio: 0 },
+    precio: 0, // precio base
+    adicional: {
+      nombre: "",
+      tamaño: "",
+      precio: 0,
+    },
+    tamaño: {
+      nombre: "",
+      precio: 0,
+    },
     precioTotal: 0,
   });
+  const [editArticuloId, setEditArticuloId] = useState(null);
 
-  // ----------------- EFECTO: OBTENER TODAS LAS SECCIONES EN TIEMPO REAL -----------------
+  // Declaramos los sensores para secciones y artículos (siempre llamados en el mismo orden)
+  const sensorsSecciones = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const sensorsArticulos = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // Cargar secciones en tiempo real (ordenadas por "orden")
   useEffect(() => {
-    // Suscripción a la colección 'secciones'
-    const unsubscribe = onSnapshot(collection(db, "secciones"), (snapshot) => {
-      const dataSecciones = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      }));
-      setSecciones(dataSecciones);
+    const q = query(collection(db, "secciones"), orderBy("orden", "asc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setSecciones(
+        snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      );
     });
-    // Limpiamos la suscripción al desmontar
     return () => unsubscribe();
   }, []);
 
-  // ----------------- EFECTO: CARGAR ARTÍCULOS DE LA SECCIÓN SELECCIONADA -----------------
+  // Cargar artículos de la sección seleccionada (ordenados)
   useEffect(() => {
-    if (!seccionSeleccionada) return;
-
-    const subCollectionRef = collection(
-      db,
-      "secciones",
-      seccionSeleccionada.id,
-      "articulos"
+    if (!seccionSeleccionada) {
+      setArticulos([]);
+      return;
+    }
+    const q = query(
+      collection(db, "secciones", seccionSeleccionada.id, "articulos"),
+      orderBy("orden", "asc")
     );
-    // Suscribimos a la subcolección 'articulos' de la sección actual
-    const unsubscribe = onSnapshot(subCollectionRef, (snapshot) => {
-      const dataArticulos = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...docSnap.data(),
-      }));
-      setArticulos(dataArticulos);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setArticulos(
+        snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      );
     });
-
     return () => unsubscribe();
   }, [seccionSeleccionada]);
 
-  // ----------------- CERRAR SESIÓN -----------------
-  const handleLogout = () => {
-    signOut(auth);
-  };
-
-  // ----------------- CREAR UNA NUEVA SECCIÓN -----------------
-  const createSeccion = async () => {
-    if (!nuevaSeccion.trim()) {
-      alert("Ingresa un nombre de sección");
-      return;
+  // Función para agregar o editar una sección
+  const saveSeccion = async () => {
+    if (editSeccionId ? !editNombreSeccion.trim() : !nuevaSeccion.trim()) {
+      return Swal.fire({
+        title: "Atención",
+        text: "Ingresa un nombre de sección.",
+        icon: "warning",
+        confirmButtonText: "Aceptar",
+      });
     }
     try {
-      await addDoc(collection(db, "secciones"), {
-        nombre: nuevaSeccion,
-      });
+      if (editSeccionId) {
+        await updateDoc(doc(db, "secciones", editSeccionId), {
+          nombre: editNombreSeccion,
+        });
+        Swal.fire({
+          title: "¡Actualizado!",
+          text: "La sección ha sido actualizada correctamente.",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+        setEditSeccionId(null);
+      } else {
+        const orden = secciones.length;
+        await addDoc(collection(db, "secciones"), { nombre: nuevaSeccion, orden });
+        Swal.fire({
+          title: "¡Agregado!",
+          text: "La sección ha sido agregada correctamente.",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
       setNuevaSeccion("");
+      setEditNombreSeccion("");
     } catch (error) {
-      console.error("Error al crear sección:", error);
+      console.error("🚨 Error al guardar sección:", error);
+      Swal.fire({
+        title: "Error",
+        text: "No se pudo guardar la sección.",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
     }
   };
 
-  // ----------------- MANEJADOR DE CAMBIOS DE INPUT (ARTÍCULO) -----------------
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    // name puede ser 'nombre', 'ingredientes', 'adicional.nombre', etc.
-    const parts = name.split(".");
-    if (parts.length === 1) {
-      // Campos directos como 'nombre', 'ingredientes'
-      setNuevoArticulo((prev) => ({ ...prev, [name]: value }));
-    } else if (parts.length === 2) {
-      // Campos anidados como 'adicional.nombre'
-      const [objKey, field] = parts; // ej: "adicional", "nombre"
-      setNuevoArticulo((prev) => ({
-        ...prev,
-        [objKey]: {
-          ...prev[objKey],
-          [field]: value,
-        },
-      }));
+  // Función para eliminar una sección
+  const deleteSeccion = async (id) => {
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: "¡Esta acción eliminará la sección y todos sus artículos!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+    if (!result.isConfirmed) return;
+    try {
+      await deleteDoc(doc(db, "secciones", id));
+      setSecciones((prev) => prev.filter((sec) => sec.id !== id));
+      if (seccionSeleccionada?.id === id) {
+        setSeccionSeleccionada(null);
+        setArticulos([]);
+      }
+      Swal.fire({
+        title: "Eliminado",
+        text: "La sección ha sido eliminada.",
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("🚨 Error al eliminar sección:", error);
+      Swal.fire({
+        title: "Error",
+        text: "Ocurrió un error al eliminar la sección.",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
     }
   };
 
-  // ----------------- CREAR UN NUEVO ARTÍCULO EN LA SECCIÓN SELECCIONADA -----------------
-  const createArticulo = async () => {
+  // Inicia el proceso de edición de una sección (carga el nombre en el formulario)
+  const startEditSeccion = (id, nombre) => {
+    setEditSeccionId(id);
+    setEditNombreSeccion(nombre);
+  };
+
+  // Reordenar secciones con dnd-kit
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = secciones.findIndex((s) => s.id === active.id);
+    const newIndex = secciones.findIndex((s) => s.id === over.id);
+    const newSecciones = arrayMove(secciones, oldIndex, newIndex);
+    setSecciones(newSecciones);
+    try {
+      const batchUpdates = newSecciones.map((sec, index) =>
+        updateDoc(doc(db, "secciones", sec.id), { orden: index })
+      );
+      await Promise.all(batchUpdates);
+    } catch (error) {
+      console.error("🚨 Error al actualizar el orden:", error);
+      Swal.fire({
+        title: "Error",
+        text: "No se pudo actualizar el orden de las secciones.",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
+    }
+  };
+
+  // --- Funciones para los artículos ---
+  const saveArticulo = async () => {
     if (!seccionSeleccionada) {
-      alert("Selecciona una sección para añadir artículos");
-      return;
+      return Swal.fire({
+        title: "Atención",
+        text: "Selecciona una sección.",
+        icon: "warning",
+        confirmButtonText: "Aceptar",
+      });
     }
     if (!nuevoArticulo.nombre.trim()) {
-      alert("El artículo necesita un nombre");
-      return;
+      return Swal.fire({
+        title: "Atención",
+        text: "El artículo debe tener un nombre.",
+        icon: "warning",
+        confirmButtonText: "Aceptar",
+      });
     }
-
-    // Convertir en number los precios
-    const precioBase = parseFloat(nuevoArticulo.tamaño.precio) || 0;
-    const precioAdicional = parseFloat(nuevoArticulo.adicional.precio) || 0;
-    const precioTotalCalc = precioBase + precioAdicional;
-
-    // ingredientes -> array de strings, asumiendo que vienen separadas por comas
-    const ingredientesArray = nuevoArticulo.ingredientes
-      ? nuevoArticulo.ingredientes.split(",").map((i) => i.trim())
-      : [];
-
-    // Estructura final del artículo
-    const articuloData = {
-      nombre: nuevoArticulo.nombre,
-      ingredientes: ingredientesArray,
-      adicional: {
-        nombre: nuevoArticulo.adicional.nombre,
-        tamaño: nuevoArticulo.adicional.tamaño,
-        precio: precioAdicional,
-      },
-      tamaño: {
-        nombre: nuevoArticulo.tamaño.nombre,
-        precio: precioBase,
-      },
-      precioTotal: precioTotalCalc,
-    };
-
     try {
-      await addDoc(
-        collection(db, "secciones", seccionSeleccionada.id, "articulos"),
-        articuloData
-      );
-      // Limpiar el formulario
+      // Calculamos el precioTotal como precio base + precio del adicional
+      const precioTotal =
+        Number(nuevoArticulo.precio) +
+        Number(nuevoArticulo.adicional.precio);
+      const articuloData = {
+        ...nuevoArticulo,
+        precioTotal,
+      };
+      if (editArticuloId) {
+        await updateDoc(
+          doc(db, "secciones", seccionSeleccionada.id, "articulos", editArticuloId),
+          articuloData
+        );
+        Swal.fire({
+          title: "¡Actualizado!",
+          text: "El artículo ha sido actualizado correctamente.",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+        setEditArticuloId(null);
+      } else {
+        const orden = articulos.length;
+        await addDoc(
+          collection(db, "secciones", seccionSeleccionada.id, "articulos"),
+          { ...articuloData, orden }
+        );
+        Swal.fire({
+          title: "¡Agregado!",
+          text: "El artículo ha sido agregado correctamente.",
+          icon: "success",
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      }
+      // Reiniciamos el formulario del artículo con la nueva estructura
       setNuevoArticulo({
         nombre: "",
         ingredientes: "",
+        precio: 0,
         adicional: { nombre: "", tamaño: "", precio: 0 },
         tamaño: { nombre: "", precio: 0 },
         precioTotal: 0,
       });
     } catch (error) {
-      console.error("Error al crear artículo:", error);
+      console.error("🚨 Error al guardar artículo:", error);
+      Swal.fire({
+        title: "Error",
+        text: "No se pudo guardar el artículo.",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
     }
   };
 
-  // ----------------- ELIMINAR UN ARTÍCULO (OPCIONAL) -----------------
+  // Inicia la edición de un artículo (carga sus datos en el formulario)
+  const startEditArticulo = (articulo) => {
+    setEditArticuloId(articulo.id);
+    setNuevoArticulo({
+      nombre: articulo.nombre,
+      ingredientes: articulo.ingredientes,
+      precio: articulo.precio,
+      adicional: articulo.adicional || { nombre: "", tamaño: "", precio: 0 },
+      tamaño: articulo.tamaño || { nombre: "", precio: 0 },
+      precioTotal:
+        articulo.precioTotal ||
+        Number(articulo.precio) + Number(articulo.adicional?.precio || 0),
+    });
+  };
+
+  // Eliminar un artículo
   const deleteArticulo = async (articuloId) => {
-    if (!articuloId || !seccionSeleccionada) return;
+    const result = await Swal.fire({
+      title: "¿Estás seguro?",
+      text: "¡Esta acción eliminará el artículo!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+    if (!result.isConfirmed) return;
     try {
       await deleteDoc(
         doc(db, "secciones", seccionSeleccionada.id, "articulos", articuloId)
       );
+      Swal.fire({
+        title: "Eliminado",
+        text: "El artículo ha sido eliminado.",
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+      });
     } catch (error) {
-      console.error("Error al eliminar artículo:", error);
+      console.error("🚨 Error al eliminar artículo:", error);
+      Swal.fire({
+        title: "Error",
+        text: "No se pudo eliminar el artículo.",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
+    }
+  };
+
+  // Reordenar artículos con dnd-kit
+  const handleDragEndArticulo = async (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = articulos.findIndex((a) => a.id === active.id);
+    const newIndex = articulos.findIndex((a) => a.id === over.id);
+    const newArticulos = arrayMove(articulos, oldIndex, newIndex);
+    setArticulos(newArticulos);
+    try {
+      const batchUpdates = newArticulos.map((art, index) =>
+        updateDoc(
+          doc(db, "secciones", seccionSeleccionada.id, "articulos", art.id),
+          { orden: index }
+        )
+      );
+      await Promise.all(batchUpdates);
+    } catch (error) {
+      console.error("🚨 Error al actualizar el orden de los artículos:", error);
+      Swal.fire({
+        title: "Error",
+        text: "No se pudo actualizar el orden de los artículos.",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
     }
   };
 
   return (
     <div className="container mt-5">
       <h1>Panel de Administración</h1>
-      <button className="btn btn-danger mb-3" onClick={handleLogout}>
+      <button className="btn btn-danger mb-3" onClick={() => signOut(auth)}>
         Cerrar Sesión
       </button>
 
-      {/* CREAR SECCIÓN */}
+      {/* CREAR O EDITAR SECCIÓN */}
       <div className="mb-4">
-        <h2>Crear Sección</h2>
+        <h2>{editSeccionId ? "Editar Sección" : "Crear Sección"}</h2>
         <input
-          value={nuevaSeccion}
-          onChange={(e) => setNuevaSeccion(e.target.value)}
-          placeholder="Ej: Entradas, Bebidas, Postres..."
+          value={editSeccionId ? editNombreSeccion : nuevaSeccion}
+          onChange={(e) =>
+            editSeccionId
+              ? setEditNombreSeccion(e.target.value)
+              : setNuevaSeccion(e.target.value)
+          }
+          placeholder="Nombre de la sección"
           className="form-control mb-2"
         />
-        <button className="btn btn-primary" onClick={createSeccion}>
-          Agregar Sección
+        <button className="btn btn-primary" onClick={saveSeccion}>
+          {editSeccionId ? "Guardar Cambios" : "Agregar Sección"}
         </button>
       </div>
-      <hr />
 
-      <div className="row">
-        {/* LISTADO DE SECCIONES */}
-        <div className="col-4">
-          <h3>Secciones</h3>
+      {/* LISTADO DE SECCIONES */}
+      <DndContext
+        sensors={sensorsSecciones}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={secciones} strategy={verticalListSortingStrategy}>
           <ul className="list-group">
             {secciones.map((sec) => (
-              <li
+              <SortableItem
                 key={sec.id}
-                className={`list-group-item ${
-                  seccionSeleccionada?.id === sec.id ? "active" : ""
-                }`}
-                style={{ cursor: "pointer" }}
+                id={sec.id}
+                nombre={sec.nombre}
+                onDelete={() => deleteSeccion(sec.id)}
+                onEdit={() => startEditSeccion(sec.id, sec.nombre)}
                 onClick={() => setSeccionSeleccionada(sec)}
-              >
-                {sec.nombre}
-              </li>
+              />
             ))}
           </ul>
+        </SortableContext>
+      </DndContext>
+
+      {/* PANEL DE ARTÍCULOS (solo si se ha seleccionado una sección) */}
+      {seccionSeleccionada && (
+        <div className="mt-4">
+          <h3>Artículos en {seccionSeleccionada.nombre}</h3>
+          <button
+            className="btn btn-secondary mb-3"
+            onClick={() => setSeccionSeleccionada(null)}
+          >
+            Volver
+          </button>
+
+          {/* Formulario para agregar/editar artículo */}
+          <div className="mb-4">
+            <h4>{editArticuloId ? "Editar Artículo" : "Agregar Artículo"}</h4>
+            <input
+              type="text"
+              className="form-control mb-2"
+              placeholder="Nombre del artículo"
+              value={nuevoArticulo.nombre}
+              onChange={(e) =>
+                setNuevoArticulo({ ...nuevoArticulo, nombre: e.target.value })
+              }
+            />
+            <input
+              type="text"
+              className="form-control mb-2"
+              placeholder="Ingredientes"
+              value={nuevoArticulo.ingredientes}
+              onChange={(e) =>
+                setNuevoArticulo({ ...nuevoArticulo, ingredientes: e.target.value })
+              }
+            />
+            <input
+              type="number"
+              className="form-control mb-2"
+              placeholder="Precio base"
+              value={nuevoArticulo.precio}
+              onChange={(e) =>
+                setNuevoArticulo({
+                  ...nuevoArticulo,
+                  precio: parseFloat(e.target.value) || 0,
+                })
+              }
+            />
+            <hr />
+            <h5>Adicional</h5>
+            <input
+              type="text"
+              className="form-control mb-2"
+              placeholder="Nombre del adicional"
+              value={nuevoArticulo.adicional.nombre}
+              onChange={(e) =>
+                setNuevoArticulo((prev) => ({
+                  ...prev,
+                  adicional: { ...prev.adicional, nombre: e.target.value },
+                }))
+              }
+            />
+            <input
+              type="text"
+              className="form-control mb-2"
+              placeholder="Tamaño del adicional"
+              value={nuevoArticulo.adicional.tamaño}
+              onChange={(e) =>
+                setNuevoArticulo((prev) => ({
+                  ...prev,
+                  adicional: { ...prev.adicional, tamaño: e.target.value },
+                }))
+              }
+            />
+            <input
+              type="number"
+              className="form-control mb-2"
+              placeholder="Precio del adicional"
+              value={nuevoArticulo.adicional.precio}
+              onChange={(e) =>
+                setNuevoArticulo((prev) => ({
+                  ...prev,
+                  adicional: {
+                    ...prev.adicional,
+                    precio: parseFloat(e.target.value) || 0,
+                  },
+                }))
+              }
+            />
+            <hr />
+            <h5>Tamaño</h5>
+            <input
+              type="text"
+              className="form-control mb-2"
+              placeholder="Nombre del tamaño"
+              value={nuevoArticulo.tamaño.nombre}
+              onChange={(e) =>
+                setNuevoArticulo((prev) => ({
+                  ...prev,
+                  tamaño: { ...prev.tamaño, nombre: e.target.value },
+                }))
+              }
+            />
+            <input
+              type="number"
+              className="form-control mb-2"
+              placeholder="Precio del tamaño"
+              value={nuevoArticulo.tamaño.precio}
+              onChange={(e) =>
+                setNuevoArticulo((prev) => ({
+                  ...prev,
+                  tamaño: {
+                    ...prev.tamaño,
+                    precio: parseFloat(e.target.value) || 0,
+                  },
+                }))
+              }
+            />
+            <button className="btn btn-primary" onClick={saveArticulo}>
+              {editArticuloId ? "Guardar Cambios" : "Agregar Artículo"}
+            </button>
+          </div>
+
+          {/* Listado y ordenamiento de artículos */}
+          <div>
+            <h4>Lista de Artículos</h4>
+            <DndContext
+              sensors={sensorsArticulos}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEndArticulo}
+            >
+              <SortableContext items={articulos} strategy={verticalListSortingStrategy}>
+                <ul className="list-group">
+                  {articulos.map((art) => (
+                    <SortableItem
+                      key={art.id}
+                      id={art.id}
+                      nombre={art.nombre}
+                      onDelete={() => deleteArticulo(art.id)}
+                      onEdit={() => startEditArticulo(art)}
+                    />
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
+          </div>
         </div>
-
-        {/* ARTÍCULOS DE LA SECCIÓN SELECCIONADA */}
-        <div className="col-8">
-          {seccionSeleccionada ? (
-            <>
-              <h3>Artículos de la sección: {seccionSeleccionada.nombre}</h3>
-
-              {/* FORMULARIO PARA CREAR ARTÍCULO */}
-              <div className="mt-3">
-                <h4>Crear Artículo</h4>
-                <input
-                  type="text"
-                  name="nombre"
-                  placeholder="Nombre del artículo"
-                  value={nuevoArticulo.nombre}
-                  onChange={handleInputChange}
-                  className="form-control mb-2"
-                />
-                <textarea
-                  name="ingredientes"
-                  placeholder="Ingredientes separados por coma"
-                  value={nuevoArticulo.ingredientes}
-                  onChange={handleInputChange}
-                  className="form-control mb-2"
-                />
-                <h5>Adicional</h5>
-                <input
-                  type="text"
-                  name="adicional.nombre"
-                  placeholder="Nombre adicional"
-                  value={nuevoArticulo.adicional.nombre}
-                  onChange={handleInputChange}
-                  className="form-control mb-2"
-                />
-                <input
-                  type="text"
-                  name="adicional.tamaño"
-                  placeholder="Tamaño adicional"
-                  value={nuevoArticulo.adicional.tamaño}
-                  onChange={handleInputChange}
-                  className="form-control mb-2"
-                />
-                <input
-                  type="number"
-                  name="adicional.precio"
-                  placeholder="Precio adicional"
-                  value={nuevoArticulo.adicional.precio}
-                  onChange={handleInputChange}
-                  className="form-control mb-2"
-                />
-                <h5>Tamaño Base</h5>
-                <input
-                  type="text"
-                  name="tamaño.nombre"
-                  placeholder="Nombre tamaño"
-                  value={nuevoArticulo.tamaño.nombre}
-                  onChange={handleInputChange}
-                  className="form-control mb-2"
-                />
-                <input
-                  type="number"
-                  name="tamaño.precio"
-                  placeholder="Precio base"
-                  value={nuevoArticulo.tamaño.precio}
-                  onChange={handleInputChange}
-                  className="form-control mb-2"
-                />
-                <button className="btn btn-success" onClick={createArticulo}>
-                  Agregar Artículo
-                </button>
-              </div>
-
-              {/* LISTA DE ARTÍCULOS */}
-              <h4 className="mt-4">Lista de Artículos</h4>
-              <ul className="list-group">
-                {articulos.map((art) => (
-                  <li
-                    key={art.id}
-                    className="list-group-item d-flex justify-content-between"
-                  >
-                    <div>
-                      <strong>{art.nombre}</strong>
-                      {Array.isArray(art.ingredientes) && art.ingredientes.length > 0 && (
-                        <p>
-                          <em>Ingredientes:</em> {art.ingredientes.join(", ")}
-                        </p>
-                      )}
-                      {art.adicional && (
-                        <>
-                          <p>Adicional: {art.adicional.nombre}</p>
-                          <p>Tamaño Adicional: {art.adicional.tamaño}</p>
-                          <p>Precio Adicional: {art.adicional.precio}</p>
-                        </>
-                      )}
-                      {art.tamaño && (
-                        <>
-                          <p>Tamaño Base: {art.tamaño.nombre}</p>
-                          <p>Precio Base: {art.tamaño.precio}</p>
-                        </>
-                      )}
-                      <p>
-                        <strong>Precio Total: ${art.precioTotal}</strong>
-                      </p>
-                    </div>
-                    <button
-                      className="btn btn-danger btn-sm"
-                      onClick={() => deleteArticulo(art.id)}
-                    >
-                      Eliminar
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : (
-            <p>Selecciona una sección para ver y crear artículos.</p>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 };
