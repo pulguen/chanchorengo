@@ -27,6 +27,7 @@ import {
 } from "@dnd-kit/sortable";
 import SortableItem from "./SortableItem"; // Componente de elementos ordenables
 import Swal from "sweetalert2";
+import "../../Styles/Admin.css";
 
 const Admin = () => {
   // Estados para secciones
@@ -35,28 +36,32 @@ const Admin = () => {
   const [editSeccionId, setEditSeccionId] = useState(null);
   const [editNombreSeccion, setEditNombreSeccion] = useState("");
   const [seccionSeleccionada, setSeccionSeleccionada] = useState(null);
+
+  // Estado para la lista de artículos
   const [articulos, setArticulos] = useState([]);
 
-  // Estados para artículos  
-  // Actualizamos el estado inicial con la nueva estructura
-  const [nuevoArticulo, setNuevoArticulo] = useState({
+  // Estado para artículo individual (estructura actualizada)
+  const initialArticuloState = {
     nombre: "",
     ingredientes: "",
-    precio: 0, // precio base
+    precio: "", // Cadena vacía para que el placeholder se muestre en vez de 0
     adicional: {
       nombre: "",
       tamaño: "",
-      precio: 0,
+      precio: "",
     },
     tamaño: {
       nombre: "",
-      precio: 0,
+      precio: "",
     },
     precioTotal: 0,
-  });
+  };
+  const [nuevoArticulo, setNuevoArticulo] = useState(initialArticuloState);
   const [editArticuloId, setEditArticuloId] = useState(null);
+  // Estado para controlar la visibilidad del formulario de artículo
+  const [mostrarFormularioArticulo, setMostrarFormularioArticulo] = useState(false);
 
-  // Declaramos los sensores para secciones y artículos (siempre llamados en el mismo orden)
+  // Declaramos los sensores para secciones y artículos
   const sensorsSecciones = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -70,9 +75,7 @@ const Admin = () => {
   useEffect(() => {
     const q = query(collection(db, "secciones"), orderBy("orden", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setSecciones(
-        snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      );
+      setSecciones(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsubscribe();
   }, []);
@@ -88,9 +91,7 @@ const Admin = () => {
       orderBy("orden", "asc")
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setArticulos(
-        snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      );
+      setArticulos(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsubscribe();
   }, [seccionSeleccionada]);
@@ -117,7 +118,7 @@ const Admin = () => {
           timer: 1500,
           showConfirmButton: false,
         });
-        setEditSeccionId(null);
+        cancelEditSeccion();
       } else {
         const orden = secciones.length;
         await addDoc(collection(db, "secciones"), { nombre: nuevaSeccion, orden });
@@ -140,6 +141,12 @@ const Admin = () => {
         confirmButtonText: "Aceptar",
       });
     }
+  };
+
+  // Función para cancelar la edición de sección
+  const cancelEditSeccion = () => {
+    setEditSeccionId(null);
+    setEditNombreSeccion("");
   };
 
   // Función para eliminar una sección
@@ -180,7 +187,7 @@ const Admin = () => {
     }
   };
 
-  // Inicia el proceso de edición de una sección (carga el nombre en el formulario)
+  // Inicia el proceso de edición de una sección
   const startEditSeccion = (id, nombre) => {
     setEditSeccionId(id);
     setEditNombreSeccion(nombre);
@@ -229,14 +236,16 @@ const Admin = () => {
       });
     }
     try {
-      // Calculamos el precioTotal como precio base + precio del adicional
+      // Calculamos el precioTotal: precio base + tamaño.precio + adicional.precio
       const precioTotal =
         Number(nuevoArticulo.precio) +
+        Number(nuevoArticulo.tamaño.precio) +
         Number(nuevoArticulo.adicional.precio);
       const articuloData = {
         ...nuevoArticulo,
         precioTotal,
       };
+
       if (editArticuloId) {
         await updateDoc(
           doc(db, "secciones", seccionSeleccionada.id, "articulos", editArticuloId),
@@ -249,7 +258,7 @@ const Admin = () => {
           timer: 1500,
           showConfirmButton: false,
         });
-        setEditArticuloId(null);
+        cancelEditArticulo();
       } else {
         const orden = articulos.length;
         await addDoc(
@@ -264,15 +273,8 @@ const Admin = () => {
           showConfirmButton: false,
         });
       }
-      // Reiniciamos el formulario del artículo con la nueva estructura
-      setNuevoArticulo({
-        nombre: "",
-        ingredientes: "",
-        precio: 0,
-        adicional: { nombre: "", tamaño: "", precio: 0 },
-        tamaño: { nombre: "", precio: 0 },
-        precioTotal: 0,
-      });
+      setNuevoArticulo(initialArticuloState);
+      setMostrarFormularioArticulo(false);
     } catch (error) {
       console.error("🚨 Error al guardar artículo:", error);
       Swal.fire({
@@ -284,19 +286,29 @@ const Admin = () => {
     }
   };
 
-  // Inicia la edición de un artículo (carga sus datos en el formulario)
+  // Función para cancelar la edición de un artículo
+  const cancelEditArticulo = () => {
+    setEditArticuloId(null);
+    setNuevoArticulo(initialArticuloState);
+    setMostrarFormularioArticulo(false);
+  };
+
+  // Inicia la edición de un artículo
   const startEditArticulo = (articulo) => {
     setEditArticuloId(articulo.id);
     setNuevoArticulo({
       nombre: articulo.nombre,
       ingredientes: articulo.ingredientes,
       precio: articulo.precio,
-      adicional: articulo.adicional || { nombre: "", tamaño: "", precio: 0 },
-      tamaño: articulo.tamaño || { nombre: "", precio: 0 },
+      adicional: articulo.adicional || { nombre: "", tamaño: "", precio: "" },
+      tamaño: articulo.tamaño || { nombre: "", precio: "" },
       precioTotal:
         articulo.precioTotal ||
-        Number(articulo.precio) + Number(articulo.adicional?.precio || 0),
+        Number(articulo.precio) +
+          Number(articulo.tamaño?.precio || 0) +
+          Number(articulo.adicional?.precio || 0),
     });
+    setMostrarFormularioArticulo(true);
   };
 
   // Eliminar un artículo
@@ -368,7 +380,7 @@ const Admin = () => {
 
       {/* CREAR O EDITAR SECCIÓN */}
       <div className="mb-4">
-        <h2>{editSeccionId ? "Editar Sección" : "Crear Sección"}</h2>
+        <h2>{editSeccionId ? "Editar Sección" : "Crear Nueva Sección"}</h2>
         <input
           value={editSeccionId ? editNombreSeccion : nuevaSeccion}
           onChange={(e) =>
@@ -379,11 +391,19 @@ const Admin = () => {
           placeholder="Nombre de la sección"
           className="form-control mb-2"
         />
-        <button className="btn btn-primary" onClick={saveSeccion}>
-          {editSeccionId ? "Guardar Cambios" : "Agregar Sección"}
-        </button>
+        <div>
+          <button className="btn btn-primary me-2" onClick={saveSeccion}>
+            {editSeccionId ? "Guardar Cambios" : "Agregar Sección"}
+          </button>
+          {editSeccionId && (
+            <button className="btn btn-warning" onClick={cancelEditSeccion}>
+              Cancelar
+            </button>
+          )}
+        </div>
       </div>
 
+      <h3>Listado de Secciones del Menú</h3>
       {/* LISTADO DE SECCIONES */}
       <DndContext
         sensors={sensorsSecciones}
@@ -400,133 +420,25 @@ const Admin = () => {
                 onDelete={() => deleteSeccion(sec.id)}
                 onEdit={() => startEditSeccion(sec.id, sec.nombre)}
                 onClick={() => setSeccionSeleccionada(sec)}
+                isActive={seccionSeleccionada && sec.id === seccionSeleccionada.id}
               />
             ))}
           </ul>
         </SortableContext>
       </DndContext>
 
-      {/* PANEL DE ARTÍCULOS (solo si se ha seleccionado una sección) */}
+      {/* PANEL DE ARTÍCULOS (mostrado en una card sobrepuesta) */}
       {seccionSeleccionada && (
-        <div className="mt-4">
-          <h3>Artículos en {seccionSeleccionada.nombre}</h3>
-          <button
-            className="btn btn-secondary mb-3"
-            onClick={() => setSeccionSeleccionada(null)}
-          >
-            Volver
-          </button>
-
-          {/* Formulario para agregar/editar artículo */}
-          <div className="mb-4">
-            <h4>{editArticuloId ? "Editar Artículo" : "Agregar Artículo"}</h4>
-            <input
-              type="text"
-              className="form-control mb-2"
-              placeholder="Nombre del artículo"
-              value={nuevoArticulo.nombre}
-              onChange={(e) =>
-                setNuevoArticulo({ ...nuevoArticulo, nombre: e.target.value })
-              }
-            />
-            <input
-              type="text"
-              className="form-control mb-2"
-              placeholder="Ingredientes"
-              value={nuevoArticulo.ingredientes}
-              onChange={(e) =>
-                setNuevoArticulo({ ...nuevoArticulo, ingredientes: e.target.value })
-              }
-            />
-            <input
-              type="number"
-              className="form-control mb-2"
-              placeholder="Precio base"
-              value={nuevoArticulo.precio}
-              onChange={(e) =>
-                setNuevoArticulo({
-                  ...nuevoArticulo,
-                  precio: parseFloat(e.target.value) || 0,
-                })
-              }
-            />
-            <hr />
-            <h5>Adicional</h5>
-            <input
-              type="text"
-              className="form-control mb-2"
-              placeholder="Nombre del adicional"
-              value={nuevoArticulo.adicional.nombre}
-              onChange={(e) =>
-                setNuevoArticulo((prev) => ({
-                  ...prev,
-                  adicional: { ...prev.adicional, nombre: e.target.value },
-                }))
-              }
-            />
-            <input
-              type="text"
-              className="form-control mb-2"
-              placeholder="Tamaño del adicional"
-              value={nuevoArticulo.adicional.tamaño}
-              onChange={(e) =>
-                setNuevoArticulo((prev) => ({
-                  ...prev,
-                  adicional: { ...prev.adicional, tamaño: e.target.value },
-                }))
-              }
-            />
-            <input
-              type="number"
-              className="form-control mb-2"
-              placeholder="Precio del adicional"
-              value={nuevoArticulo.adicional.precio}
-              onChange={(e) =>
-                setNuevoArticulo((prev) => ({
-                  ...prev,
-                  adicional: {
-                    ...prev.adicional,
-                    precio: parseFloat(e.target.value) || 0,
-                  },
-                }))
-              }
-            />
-            <hr />
-            <h5>Tamaño</h5>
-            <input
-              type="text"
-              className="form-control mb-2"
-              placeholder="Nombre del tamaño"
-              value={nuevoArticulo.tamaño.nombre}
-              onChange={(e) =>
-                setNuevoArticulo((prev) => ({
-                  ...prev,
-                  tamaño: { ...prev.tamaño, nombre: e.target.value },
-                }))
-              }
-            />
-            <input
-              type="number"
-              className="form-control mb-2"
-              placeholder="Precio del tamaño"
-              value={nuevoArticulo.tamaño.precio}
-              onChange={(e) =>
-                setNuevoArticulo((prev) => ({
-                  ...prev,
-                  tamaño: {
-                    ...prev.tamaño,
-                    precio: parseFloat(e.target.value) || 0,
-                  },
-                }))
-              }
-            />
-            <button className="btn btn-primary" onClick={saveArticulo}>
-              {editArticuloId ? "Guardar Cambios" : "Agregar Artículo"}
+        <div className="articles-card card p-3">
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h3 className="card-title">Artículos en {seccionSeleccionada.nombre}</h3>
+            <button className="btn btn-secondary" onClick={() => setSeccionSeleccionada(null)}>
+              Cerrar
             </button>
           </div>
 
-          {/* Listado y ordenamiento de artículos */}
-          <div>
+          {/* --- Primero: Listado de Artículos --- */}
+          <div className="mb-4">
             <h4>Lista de Artículos</h4>
             <DndContext
               sensors={sensorsArticulos}
@@ -548,6 +460,133 @@ const Admin = () => {
               </SortableContext>
             </DndContext>
           </div>
+
+          {/* --- Después: Formulario para Agregar/Editar Artículo (colapsable) --- */}
+          {mostrarFormularioArticulo || editArticuloId ? (
+            <div className="mb-4">
+              <h4>{editArticuloId ? "Editar Artículo" : "Agregar Artículo"}</h4>
+              <input
+                type="text"
+                className="form-control mb-2"
+                placeholder="Nombre del artículo"
+                value={nuevoArticulo.nombre}
+                onChange={(e) =>
+                  setNuevoArticulo({ ...nuevoArticulo, nombre: e.target.value })
+                }
+              />
+              <input
+                type="text"
+                className="form-control mb-2"
+                placeholder="Ingredientes"
+                value={nuevoArticulo.ingredientes}
+                onChange={(e) =>
+                  setNuevoArticulo({ ...nuevoArticulo, ingredientes: e.target.value })
+                }
+              />
+              <input
+                type="number"
+                min="0"
+                className="form-control mb-2"
+                placeholder="Agregar precio base..."
+                value={nuevoArticulo.precio}
+                onChange={(e) =>
+                  setNuevoArticulo({
+                    ...nuevoArticulo,
+                    precio: parseFloat(e.target.value) || "",
+                  })
+                }
+              />
+              <hr />
+              <h5>Adicional</h5>
+              <input
+                type="text"
+                className="form-control mb-2"
+                placeholder="Nombre del adicional"
+                value={nuevoArticulo.adicional.nombre}
+                onChange={(e) =>
+                  setNuevoArticulo((prev) => ({
+                    ...prev,
+                    adicional: { ...prev.adicional, nombre: e.target.value },
+                  }))
+                }
+              />
+              <input
+                type="text"
+                className="form-control mb-2"
+                placeholder="Tamaño del adicional"
+                value={nuevoArticulo.adicional.tamaño}
+                onChange={(e) =>
+                  setNuevoArticulo((prev) => ({
+                    ...prev,
+                    adicional: { ...prev.adicional, tamaño: e.target.value },
+                  }))
+                }
+              />
+              <input
+                type="number"
+                min="0"
+                className="form-control mb-2"
+                placeholder="Agregar precio del adicional..."
+                value={nuevoArticulo.adicional.precio}
+                onChange={(e) =>
+                  setNuevoArticulo((prev) => ({
+                    ...prev,
+                    adicional: {
+                      ...prev.adicional,
+                      precio: parseFloat(e.target.value) || "",
+                    },
+                  }))
+                }
+              />
+              <hr />
+              <h5>Tamaño</h5>
+              <input
+                type="text"
+                className="form-control mb-2"
+                placeholder="Nombre del tamaño"
+                value={nuevoArticulo.tamaño.nombre}
+                onChange={(e) =>
+                  setNuevoArticulo((prev) => ({
+                    ...prev,
+                    tamaño: { ...prev.tamaño, nombre: e.target.value },
+                  }))
+                }
+              />
+              <input
+                type="number"
+                min="0"
+                className="form-control mb-2"
+                placeholder="Agregar precio del tamaño..."
+                value={nuevoArticulo.tamaño.precio}
+                onChange={(e) =>
+                  setNuevoArticulo((prev) => ({
+                    ...prev,
+                    tamaño: {
+                      ...prev.tamaño,
+                      precio: parseFloat(e.target.value) || "",
+                    },
+                  }))
+                }
+              />
+              <div>
+                <button className="btn btn-primary me-2" onClick={saveArticulo}>
+                  {editArticuloId ? "Guardar Cambios" : "Agregar Artículo"}
+                </button>
+                <button className="btn btn-warning" onClick={cancelEditArticulo}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4">
+              <button
+                className="btn btn-primary"
+                onClick={() => setMostrarFormularioArticulo(true)}
+              >
+                Nuevo Artículo
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

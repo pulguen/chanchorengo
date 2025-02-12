@@ -1,0 +1,27 @@
+/* Admin.css Efecto hover y estado activo para secciones */
+.section-item:hover {
+    background-color: #f8f9fa;
+    transition: background-color 0.3s ease;
+  }
+  .section-item.active {
+    color: black;
+    background-color: #e2e6ea;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Estilo para la card de artículos */
+  .articles-card {
+    position: fixed;
+    top: 100px;          /* Ajusta según tus necesidades */
+    right: 20px;         /* Ajusta la posición horizontal */
+    width: 400px;        /* O el ancho que prefieras */
+    max-height: calc(100vh - 120px);  /* Asegura que no se salga de la pantalla */
+    overflow-y: auto;    /* Permite scroll vertical si el contenido es muy alto */
+    z-index: 1050;
+    transition: transform 0.3s ease;
+    background: #fff;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  
