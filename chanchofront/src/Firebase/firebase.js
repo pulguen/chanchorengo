@@ -1,11 +1,12 @@
-// Importar las funciones necesarias
+// firebase.js
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+// Importa initializeFirestore y persistentLocalCache en lugar de getFirestore
+import { initializeFirestore, persistentLocalCache } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// Configuración de Firebase
+// Tu configuración de Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyDQ5zGzsx1K6dRnycZwDc4qc8PWZPI8syQ",
   authDomain: "elchanchorengoweb.firebaseapp.com",
@@ -16,11 +17,18 @@ const firebaseConfig = {
   measurementId: "G-G3HTT0CZLL",
 };
 
-// Inicializar Firebase
+// Inicializar la app de Firebase
 const app = initializeApp(firebaseConfig);
 
-// Exportar servicios que planeas usar
-export const analytics = getAnalytics(app); // Analytics (opcional)
+// Inicializar servicios
+export const analytics = getAnalytics(app); // (opcional)
 export const auth = getAuth(app); // Autenticación
-export const db = getFirestore(app); // Firestore
 export const storage = getStorage(app); // Almacenamiento
+
+// Inicializar Firestore con persistencia offline sin enableIndexedDbPersistence
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({
+    // Opcional: fuerza la pestaña actual a ser la propietaria de la caché
+    experimentalForceOwningTab: true,
+  }),
+});

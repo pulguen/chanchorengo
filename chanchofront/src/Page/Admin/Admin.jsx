@@ -44,7 +44,7 @@ const Admin = () => {
   const initialArticuloState = {
     nombre: "",
     ingredientes: "",
-    precio: "", // Cadena vacía para que el placeholder se muestre en vez de 0
+    precio: "", // Cadena vacía para mostrar placeholder en lugar de 0
     adicional: {
       nombre: "",
       tamaño: "",
@@ -61,6 +61,9 @@ const Admin = () => {
   // Estado para controlar la visibilidad del formulario de artículo
   const [mostrarFormularioArticulo, setMostrarFormularioArticulo] = useState(false);
 
+  // Estado para el buscador de secciones
+  const [searchTerm, setSearchTerm] = useState("");
+
   // Declaramos los sensores para secciones y artículos
   const sensorsSecciones = useSensors(
     useSensor(PointerSensor),
@@ -75,7 +78,9 @@ const Admin = () => {
   useEffect(() => {
     const q = query(collection(db, "secciones"), orderBy("orden", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setSecciones(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      setSecciones(
+        snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      );
     });
     return () => unsubscribe();
   }, []);
@@ -91,7 +96,9 @@ const Admin = () => {
       orderBy("orden", "asc")
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setArticulos(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+      setArticulos(
+        snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      );
     });
     return () => unsubscribe();
   }, [seccionSeleccionada]);
@@ -404,6 +411,24 @@ const Admin = () => {
       </div>
 
       <h3>Listado de Secciones del Menú</h3>
+      {/* Buscador de secciones */}
+      <div className="input-group mb-4">
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Buscar sección..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <button
+          className="btn btn-outline-secondary"
+          type="button"
+          onClick={() => setSearchTerm("")}
+        >
+          Borrar
+        </button>
+      </div>
+
       {/* LISTADO DE SECCIONES */}
       <DndContext
         sensors={sensorsSecciones}
@@ -412,17 +437,21 @@ const Admin = () => {
       >
         <SortableContext items={secciones} strategy={verticalListSortingStrategy}>
           <ul className="list-group">
-            {secciones.map((sec) => (
-              <SortableItem
-                key={sec.id}
-                id={sec.id}
-                nombre={sec.nombre}
-                onDelete={() => deleteSeccion(sec.id)}
-                onEdit={() => startEditSeccion(sec.id, sec.nombre)}
-                onClick={() => setSeccionSeleccionada(sec)}
-                isActive={seccionSeleccionada && sec.id === seccionSeleccionada.id}
-              />
-            ))}
+            {secciones
+              .filter((sec) =>
+                sec.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .map((sec) => (
+                <SortableItem
+                  key={sec.id}
+                  id={sec.id}
+                  nombre={sec.nombre}
+                  onDelete={() => deleteSeccion(sec.id)}
+                  onEdit={() => startEditSeccion(sec.id, sec.nombre)}
+                  onClick={() => setSeccionSeleccionada(sec)}
+                  isActive={seccionSeleccionada && sec.id === seccionSeleccionada.id}
+                />
+              ))}
           </ul>
         </SortableContext>
       </DndContext>

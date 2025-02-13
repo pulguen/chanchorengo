@@ -17,20 +17,25 @@ const SlideMenu = ({ sections, onSelectSection }) => {
   return (
     <div className="slide-menu">
       <Swiper
-        key={sections.length} // 🔥 🔄 Forzar actualización cuando cambia la lista
+        key={sections.length} // Forzamos actualización cuando cambie la lista
         modules={[Navigation, Pagination, Autoplay]}
         navigation
-        pagination={{ clickable: true }}
+        pagination={{
+          clickable: true,
+          dynamicBullets: true,      // Activa los bullets dinámicos
+          dynamicMainBullets: 3,     // Define cuántos bullets principales se muestran
+        }}
+        loop={true}  // Habilita el loop
         spaceBetween={30}
         slidesPerView={1}
         autoplay={{
-          delay: 3000,
+          delay: 20000,
           disableOnInteraction: false,
         }}
         onSlideChange={(swiper) => {
-          const currentIndex = swiper.activeIndex;
-          if (sections[currentIndex]) {
-            onSelectSection(sections[currentIndex]);
+          const realIndex = swiper.realIndex;
+          if (sections[realIndex]) {
+            onSelectSection(sections[realIndex]);
           }
         }}
       >
