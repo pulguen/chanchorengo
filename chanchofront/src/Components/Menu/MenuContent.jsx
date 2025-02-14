@@ -14,12 +14,17 @@ const MenuContent = ({ articles }) => {
         const adicionalPrecio = art.adicional ? parseFloat(art.adicional.precio) || 0 : 0;
         const tamañoPrecio = art.tamaño ? parseFloat(art.tamaño.precio) || 0 : 0;
 
-        // Verificamos si hay datos en adicional
+        // Si ingredientes es string, lo convertimos a array; si ya es array, lo dejamos
+        const ingredientes = art.ingredientes
+          ? Array.isArray(art.ingredientes)
+            ? art.ingredientes
+            : [art.ingredientes]
+          : [];
+
+        // Verificamos si hay datos en adicional y tamaño
         const hayAdicional =
           art.adicional &&
           (art.adicional.nombre || art.adicional.tamaño || adicionalPrecio > 0);
-
-        // Verificamos si hay datos en tamaño
         const hayTamaño =
           art.tamaño &&
           (art.tamaño.nombre || tamañoPrecio > 0);
@@ -28,23 +33,16 @@ const MenuContent = ({ articles }) => {
           <div key={art.id} className="article-card">
             <div className="article-header">
               <h5 className="article-title">{art.nombre}</h5>
-              {/* Mostramos precioTotal solo si es > 0 */}
               {precioTotal > 0 && (
                 <span className="article-price">${precioTotal}</span>
               )}
             </div>
-
-            {/* Ingredientes: solo si hay un array con longitud > 0 */}
-            {art.ingredientes &&
-              Array.isArray(art.ingredientes) &&
-              art.ingredientes.length > 0 && (
-                <p className="article-ingredientes">
-                  Ingredientes: {art.ingredientes.join(", ")}
-                </p>
-              )}
-
+            {ingredientes.length > 0 && (
+              <p className="article-ingredientes">
+                {ingredientes.join(", ")}
+              </p>
+            )}
             <div className="article-extra">
-              {/* Adicional: solo si hay alguno de los campos con datos */}
               {hayAdicional && (
                 <span className="article-adicional">
                   Adicional:
@@ -53,7 +51,6 @@ const MenuContent = ({ articles }) => {
                   {adicionalPrecio > 0 ? ` - $${adicionalPrecio}` : ""}
                 </span>
               )}
-              {/* Tamaño: solo si hay alguno de los campos con datos */}
               {hayTamaño && (
                 <span className="article-size">
                   Tamaño:
@@ -75,7 +72,10 @@ MenuContent.propTypes = {
       id: PropTypes.string.isRequired,
       nombre: PropTypes.string,
       precioTotal: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-      ingredientes: PropTypes.arrayOf(PropTypes.string),
+      ingredientes: PropTypes.oneOfType([
+        PropTypes.arrayOf(PropTypes.string),
+        PropTypes.string,
+      ]),
       adicional: PropTypes.shape({
         nombre: PropTypes.string,
         tamaño: PropTypes.string,

@@ -1,4 +1,5 @@
 import Menu from '../../Components/Menu/Menu';
+import Mapbar from '../../Components/Mapbar/Mapbar';
 
 const Home = () => {
   return (
@@ -8,6 +9,7 @@ const Home = () => {
         <Menu />
       </header>
       <main className="text-center">
+        <Mapbar/>
       </main>
     </>
   );
