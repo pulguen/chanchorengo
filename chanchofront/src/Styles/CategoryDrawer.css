@@ -1,0 +1,80 @@
+.category-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 2000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.category-drawer {
+  background: #fff;
+  width: 100%;
+  max-height: 80%;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  padding: 1rem;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease-out;
+  position: relative;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+/* Encabezado del drawer: título centrado y botón de cerrar superpuesto */
+.drawer-header {
+  position: relative;
+  padding: 0.5rem 0;
+  text-align: center;
+}
+
+.drawer-title {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.drawer-close-btn {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: #dc3545;
+  border: none;
+  color: #fff;
+  padding: 0.3rem 0.7rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.drawer-close-btn:hover {
+  background-color: #c82333;
+}
+
+.drawer-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+}
+
+.drawer-item {
+  padding: 0.75rem;
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+}
+
+.drawer-item:hover {
+  background-color: #f8f9fa;
+}

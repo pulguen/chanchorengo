@@ -31,7 +31,7 @@ const Navbar = () => {
 
     return (
         <nav className="navbar">
-            <img src="/logo.png" alt="Logo El Chancho Rengo" className="navbar-logo" />
+            <img src="/logonav.png" alt="Logo El Chancho Rengo" className="navbar-logo" />
             <div className="navbar-center">
                 <h2 className="navbar-city">{city}</h2>
             </div>

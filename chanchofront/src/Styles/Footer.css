@@ -1,23 +1,102 @@
-/*footer.css*/
-.navbar {
-  text-align: center; /* Asegura centrado del contenido */
+/* Footer.css */
+
+/* Estilos generales para el footer */
+.footer-navbar {
+  background-color: #343a40;
+  padding: 1rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.navbar-brand {
-  font-size: 1.2rem;
-  font-weight: bold;
+/* Container superior: logo y navegación */
+.footer-top {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
+/* Contenedor para el logo */
+.footer-logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+}
+
+/* Logo */
+.footer-logo {
+  height: 100px;
+  width: auto;
+}
+
+/* Contenedor para la navegación */
+.footer-nav-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+}
+
+/* Navegación */
+.footer-nav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+/* Estilos para los links */
 .nav-link {
-  color: #fff !important; /* Fuerza el color blanco */
+  color: #fff !important;
+  font-size: 1rem;
   transition: color 0.3s ease;
 }
 
 .nav-link:hover {
-  color: #f8c471 !important; /* Color de hover */
+  color: #f8c471 !important;
 }
 
-small {
-  font-size: 0.8rem;
-  line-height: 1.5;
+/* Container inferior: copyright */
+.footer-bottom {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+/* Bloque de horarios (por ejemplo, horario de atención y cocina) */
+.footer-schedule {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.9rem;
+  color: #ccc;
+  margin-top: 0.75rem;
+}
+.footer-schedule-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.footer-schedule-icon {
+  font-size: 1rem;
+  color: #f8c471;
+}
+
+/* Media queries para pantallas menores a 768px */
+@media (max-width: 768px) {
+  .footer-top {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  /* Dividir el footer-top en dos columnas del 50% cada una */
+  .footer-logo-container,
+  .footer-nav-container {
+    width: 50%;
+    text-align: center;
+  }
+  /* Reducir el gap entre links en dispositivos móviles */
+  .footer-nav {
+    gap: 1rem;
+  }
 }

@@ -3,6 +3,7 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "../../Firebase/firebase";
 import {
   collection,
+  collectionGroup,
   doc,
   onSnapshot,
   addDoc,
@@ -10,6 +11,7 @@ import {
   updateDoc,
   query,
   orderBy,
+  getDocs,
 } from "firebase/firestore";
 import {
   DndContext,
@@ -25,7 +27,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import SortableItem from "./SortableItem"; // Componente de elementos ordenables
+import SortableItem from "./SortableItem"; // Asegúrate de que este componente soporte el toggle de visibilidad
 import Swal from "sweetalert2";
 import "../../Styles/Admin.css";
 
@@ -35,16 +37,20 @@ const Admin = () => {
   const [nuevaSeccion, setNuevaSeccion] = useState("");
   const [editSeccionId, setEditSeccionId] = useState(null);
   const [editNombreSeccion, setEditNombreSeccion] = useState("");
+  const [editSeccionVisible, setEditSeccionVisible] = useState(true);
   const [seccionSeleccionada, setSeccionSeleccionada] = useState(null);
 
-  // Estado para la lista de artículos
+  // Estado para la lista de artículos de la sección seleccionada
   const [articulos, setArticulos] = useState([]);
+
+  // Estado para el total global de artículos (todos de todas las secciones)
+  const [totalArticulos, setTotalArticulos] = useState(0);
 
   // Estado para artículo individual (estructura actualizada)
   const initialArticuloState = {
     nombre: "",
     ingredientes: "",
-    precio: "", // Cadena vacía para mostrar placeholder en lugar de 0
+    precio: "", // Cadena vacía para que se muestre el placeholder
     adicional: {
       nombre: "",
       tamaño: "",
@@ -55,6 +61,7 @@ const Admin = () => {
       precio: "",
     },
     precioTotal: 0,
+    visible: true,
   };
   const [nuevoArticulo, setNuevoArticulo] = useState(initialArticuloState);
   const [editArticuloId, setEditArticuloId] = useState(null);
@@ -78,9 +85,7 @@ const Admin = () => {
   useEffect(() => {
     const q = query(collection(db, "secciones"), orderBy("orden", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setSecciones(
-        snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      );
+      setSecciones(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsubscribe();
   }, []);
@@ -96,14 +101,73 @@ const Admin = () => {
       orderBy("orden", "asc")
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setArticulos(
-        snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-      );
+      setArticulos(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     });
     return () => unsubscribe();
   }, [seccionSeleccionada]);
 
-  // Función para agregar o editar una sección
+  // Cargar total global de artículos de todas las secciones usando collectionGroup
+  useEffect(() => {
+    const fetchTotalArticles = async () => {
+      try {
+        const q = query(collectionGroup(db, "articulos"));
+        const snapshot = await getDocs(q);
+        setTotalArticulos(snapshot.docs.length);
+      } catch (error) {
+        console.error("Error al obtener el total de artículos:", error);
+      }
+    };
+    fetchTotalArticles();
+  }, []);
+
+  // Función para alternar visibilidad de una sección
+  const toggleSectionVisibility = async (section) => {
+    try {
+      await updateDoc(doc(db, "secciones", section.id), { visible: !section.visible });
+      Swal.fire({
+        title: "¡Actualizado!",
+        text: `La sección se ha ${section.visible ? "desactivado" : "activado"} correctamente.`,
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error al actualizar la visibilidad de la sección:", error);
+      Swal.fire({
+        title: "Error",
+        text: "No se pudo actualizar la visibilidad de la sección.",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
+    }
+  };
+
+  // Función para alternar visibilidad de un artículo
+  const toggleArticleVisibility = async (article) => {
+    try {
+      await updateDoc(
+        doc(db, "secciones", seccionSeleccionada.id, "articulos", article.id),
+        { visible: !article.visible }
+      );
+      Swal.fire({
+        title: "¡Actualizado!",
+        text: `El artículo se ha ${article.visible ? "desactivado" : "activado"} correctamente.`,
+        icon: "success",
+        timer: 1500,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error al actualizar la visibilidad del artículo:", error);
+      Swal.fire({
+        title: "Error",
+        text: "No se pudo actualizar la visibilidad del artículo.",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
+    }
+  };
+
+  // Función para guardar (agregar o editar) una sección
   const saveSeccion = async () => {
     if (editSeccionId ? !editNombreSeccion.trim() : !nuevaSeccion.trim()) {
       return Swal.fire({
@@ -117,6 +181,7 @@ const Admin = () => {
       if (editSeccionId) {
         await updateDoc(doc(db, "secciones", editSeccionId), {
           nombre: editNombreSeccion,
+          visible: editSeccionVisible,
         });
         Swal.fire({
           title: "¡Actualizado!",
@@ -128,7 +193,11 @@ const Admin = () => {
         cancelEditSeccion();
       } else {
         const orden = secciones.length;
-        await addDoc(collection(db, "secciones"), { nombre: nuevaSeccion, orden });
+        await addDoc(collection(db, "secciones"), {
+          nombre: nuevaSeccion,
+          orden,
+          visible: true,
+        });
         Swal.fire({
           title: "¡Agregado!",
           text: "La sección ha sido agregada correctamente.",
@@ -150,13 +219,13 @@ const Admin = () => {
     }
   };
 
-  // Función para cancelar la edición de sección
+  // Cancelar edición de sección
   const cancelEditSeccion = () => {
     setEditSeccionId(null);
     setEditNombreSeccion("");
   };
 
-  // Función para eliminar una sección
+  // Eliminar una sección
   const deleteSeccion = async (id) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -194,10 +263,11 @@ const Admin = () => {
     }
   };
 
-  // Inicia el proceso de edición de una sección
-  const startEditSeccion = (id, nombre) => {
+  // Inicia el proceso de edición de una sección (carga nombre y visibilidad)
+  const startEditSeccion = (id, nombre, visible) => {
     setEditSeccionId(id);
     setEditNombreSeccion(nombre);
+    setEditSeccionVisible(visible !== undefined ? visible : true);
   };
 
   // Reordenar secciones con dnd-kit
@@ -243,7 +313,6 @@ const Admin = () => {
       });
     }
     try {
-      // Calculamos el precioTotal: precio base + tamaño.precio + adicional.precio
       const precioTotal =
         Number(nuevoArticulo.precio) +
         Number(nuevoArticulo.tamaño.precio) +
@@ -270,7 +339,7 @@ const Admin = () => {
         const orden = articulos.length;
         await addDoc(
           collection(db, "secciones", seccionSeleccionada.id, "articulos"),
-          { ...articuloData, orden }
+          { ...articuloData, orden, visible: true }
         );
         Swal.fire({
           title: "¡Agregado!",
@@ -293,14 +362,12 @@ const Admin = () => {
     }
   };
 
-  // Función para cancelar la edición de un artículo
   const cancelEditArticulo = () => {
     setEditArticuloId(null);
     setNuevoArticulo(initialArticuloState);
     setMostrarFormularioArticulo(false);
   };
 
-  // Inicia la edición de un artículo
   const startEditArticulo = (articulo) => {
     setEditArticuloId(articulo.id);
     setNuevoArticulo({
@@ -314,11 +381,11 @@ const Admin = () => {
         Number(articulo.precio) +
           Number(articulo.tamaño?.precio || 0) +
           Number(articulo.adicional?.precio || 0),
+      visible: articulo.visible !== undefined ? articulo.visible : true,
     });
     setMostrarFormularioArticulo(true);
   };
 
-  // Eliminar un artículo
   const deleteArticulo = async (articuloId) => {
     const result = await Swal.fire({
       title: "¿Estás seguro?",
@@ -351,7 +418,6 @@ const Admin = () => {
     }
   };
 
-  // Reordenar artículos con dnd-kit
   const handleDragEndArticulo = async (event) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
@@ -385,6 +451,24 @@ const Admin = () => {
         Cerrar Sesión
       </button>
 
+      {/* Contador de secciones y artículos */}
+      <div className="counter-info mb-4">
+        <p>Total de secciones: {secciones.length}</p>
+        <p>Total de artículos: {totalArticulos}</p>
+        <p>
+          {seccionSeleccionada
+            ? `Artículos en la sección seleccionada: ${articulos.length}`
+            : "Selecciona una sección para ver sus artículos"}
+        </p>
+      </div>
+
+      {/* Advertencia si no hay secciones */}
+      {secciones.length === 0 && (
+        <div className="alert alert-warning" role="alert">
+          No hay secciones. ¡Empieza a crear el menú!
+        </div>
+      )}
+
       {/* CREAR O EDITAR SECCIÓN */}
       <div className="mb-4">
         <h2>{editSeccionId ? "Editar Sección" : "Crear Nueva Sección"}</h2>
@@ -398,6 +482,20 @@ const Admin = () => {
           placeholder="Nombre de la sección"
           className="form-control mb-2"
         />
+        {editSeccionId && (
+          <div className="form-check mb-2">
+            <input
+              type="checkbox"
+              className="form-check-input"
+              id="sectionVisible"
+              checked={editSeccionVisible}
+              onChange={(e) => setEditSeccionVisible(e.target.checked)}
+            />
+            <label className="form-check-label" htmlFor="sectionVisible">
+              Visible
+            </label>
+          </div>
+        )}
         <div>
           <button className="btn btn-primary me-2" onClick={saveSeccion}>
             {editSeccionId ? "Guardar Cambios" : "Agregar Sección"}
@@ -435,7 +533,7 @@ const Admin = () => {
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext items={secciones} strategy={verticalListSortingStrategy}>
+        <SortableContext items={secciones.map((sec) => sec.id)} strategy={verticalListSortingStrategy}>
           <ul className="list-group">
             {secciones
               .filter((sec) =>
@@ -446,10 +544,12 @@ const Admin = () => {
                   key={sec.id}
                   id={sec.id}
                   nombre={sec.nombre}
+                  visible={sec.visible !== false}
                   onDelete={() => deleteSeccion(sec.id)}
-                  onEdit={() => startEditSeccion(sec.id, sec.nombre)}
+                  onEdit={() => startEditSeccion(sec.id, sec.nombre, sec.visible)}
                   onClick={() => setSeccionSeleccionada(sec)}
                   isActive={seccionSeleccionada && sec.id === seccionSeleccionada.id}
+                  onToggleVisibility={() => toggleSectionVisibility(sec)}
                 />
               ))}
           </ul>
@@ -466,7 +566,7 @@ const Admin = () => {
             </button>
           </div>
 
-          {/* --- Primero: Listado de Artículos --- */}
+          {/* Listado de Artículos */}
           <div className="mb-4">
             <h4>Lista de Artículos</h4>
             <DndContext
@@ -474,15 +574,17 @@ const Admin = () => {
               collisionDetection={closestCenter}
               onDragEnd={handleDragEndArticulo}
             >
-              <SortableContext items={articulos} strategy={verticalListSortingStrategy}>
+              <SortableContext items={articulos.map((art) => art.id)} strategy={verticalListSortingStrategy}>
                 <ul className="list-group">
                   {articulos.map((art) => (
                     <SortableItem
                       key={art.id}
                       id={art.id}
                       nombre={art.nombre}
+                      visible={art.visible !== false}
                       onDelete={() => deleteArticulo(art.id)}
                       onEdit={() => startEditArticulo(art)}
+                      onToggleVisibility={() => toggleArticleVisibility(art)}
                     />
                   ))}
                 </ul>
@@ -490,7 +592,7 @@ const Admin = () => {
             </DndContext>
           </div>
 
-          {/* --- Después: Formulario para Agregar/Editar Artículo (colapsable) --- */}
+          {/* Formulario para Agregar/Editar Artículo (colapsable) */}
           {mostrarFormularioArticulo || editArticuloId ? (
             <div className="mb-4">
               <h4>{editArticuloId ? "Editar Artículo" : "Agregar Artículo"}</h4>
@@ -525,6 +627,20 @@ const Admin = () => {
                   })
                 }
               />
+              <div className="form-check mb-2">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  id="articleVisible"
+                  checked={nuevoArticulo.visible !== false}
+                  onChange={(e) =>
+                    setNuevoArticulo({ ...nuevoArticulo, visible: e.target.checked })
+                  }
+                />
+                <label className="form-check-label" htmlFor="articleVisible">
+                  Visible
+                </label>
+              </div>
               <hr />
               <h5>Adicional</h5>
               <input

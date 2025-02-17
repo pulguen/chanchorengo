@@ -1,0 +1,29 @@
+.call-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #28a745, #218838);
+  color: #fff;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 1rem;
+  transition: transform 0.2s ease, background 0.3s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+}
+
+.call-button:hover {
+  background: linear-gradient(135deg, #218838, #1e7e34);
+  transform: scale(1.03);
+}
+
+.call-button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(33, 136, 56, 0.5);
+}
+
+.call-icon {
+  font-size: 1.2rem;
+}
