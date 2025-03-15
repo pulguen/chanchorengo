@@ -5,18 +5,17 @@ import { TbDragDrop } from "react-icons/tb";
 import { FaToggleOn, FaToggleOff } from "react-icons/fa";
 import "../../Styles/SortableItem.css";
 
-const SortableItem = ({ 
-  id, 
-  nombre, 
-  visible, 
-  onDelete, 
-  onEdit, 
-  onClick, 
-  isActive, 
-  onToggleVisibility 
+const SortableItem = ({
+  id,
+  nombre,
+  visible,
+  onDelete,
+  onEdit,
+  onClick,
+  isActive,
+  onToggleVisibility,
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -44,9 +43,9 @@ const SortableItem = ({
       onClick={onClick}
       className={`list-group-item section-item d-flex justify-content-between align-items-center ${isActive ? "active" : ""}`}
     >
-      <div 
-        {...attributes} 
-        {...listeners} 
+      <div
+        {...attributes}
+        {...listeners}
         style={{ cursor: "grab", display: "flex", alignItems: "center" }}
       >
         <TbDragDrop style={{ marginRight: "8px" }} />

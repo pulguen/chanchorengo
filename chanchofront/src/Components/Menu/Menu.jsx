@@ -1,49 +1,37 @@
+// src/Components/Menu/Menu.jsx
 import { useState, useEffect } from "react";
-import { db } from "../../Firebase/firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
-
+import CategoryDrawer from "./CategoryDrawer";
 import SlideMenu from "./SlideMenu";
 import MenuContent from "./MenuContent";
-import CategoryDrawer from "./CategoryDrawer";
 
 const Menu = () => {
-  // Secciones (solo las visibles)
   const [sections, setSections] = useState([]);
-  // Sección seleccionada
   const [selectedSection, setSelectedSection] = useState(null);
-  // Artículos de la sección seleccionada (solo los visibles)
   const [articles, setArticles] = useState([]);
-  // Control para mostrar/ocultar el CategoryDrawer
   const [showDrawer, setShowDrawer] = useState(false);
 
-  // 1. Cargar secciones (lectura única)
+  // Cargar secciones desde la API
   useEffect(() => {
     const fetchSections = async () => {
       try {
-        const q = query(collection(db, "secciones"), orderBy("orden", "asc"));
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-
-        // Filtramos solo secciones con visible !== false
+        const res = await fetch("/api/secciones");
+        if (!res.ok) throw new Error("Error al obtener secciones");
+        const data = await res.json();
+        // Filtrar solo las secciones visibles (si la propiedad visible es false se oculta)
         const visibleSections = data.filter((sec) => sec.visible !== false);
-
         setSections(visibleSections);
-        // Si no hay sección seleccionada, escogemos la primera visible
         if (!selectedSection && visibleSections.length > 0) {
           setSelectedSection(visibleSections[0]);
         }
-      } catch (err) {
-        console.error("Error al obtener secciones:", err);
+      } catch (error) {
+        console.error("Error al obtener secciones:", error);
       }
     };
 
     fetchSections();
   }, [selectedSection]);
 
-  // 2. Cargar artículos de la sección seleccionada (lectura única, filtrados por visible)
+  // Cargar artículos de la sección seleccionada
   useEffect(() => {
     if (!selectedSection) {
       setArticles([]);
@@ -51,39 +39,28 @@ const Menu = () => {
     }
     const fetchArticles = async () => {
       try {
-        const subRef = collection(db, "secciones", selectedSection.id, "articulos");
-        const q = query(subRef, orderBy("orden", "asc"));
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-
-        // Filtramos artículos con visible !== false
+        const res = await fetch(`/api/secciones/${selectedSection.id}/articulos`);
+        if (!res.ok) throw new Error("Error al obtener artículos");
+        const data = await res.json();
+        // Filtrar solo los artículos visibles
         const visibleArticles = data.filter((art) => art.visible !== false);
         setArticles(visibleArticles);
-      } catch (err) {
-        console.error("Error al obtener artículos:", err);
+      } catch (error) {
+        console.error("Error al obtener artículos:", error);
       }
     };
 
     fetchArticles();
   }, [selectedSection]);
 
-  // Abre el CategoryDrawer (por ejemplo, en móviles)
-  const openDrawer = () => {
-    setShowDrawer(true);
-  };
-
-  // Cuando se selecciona una sección en el drawer, la asignamos y cerramos
-  const handleSelectSectionFromDrawer = (sec) => {
-    setSelectedSection(sec);
+  const openDrawer = () => setShowDrawer(true);
+  const handleSelectSectionFromDrawer = (section) => {
+    setSelectedSection(section);
     setShowDrawer(false);
   };
 
   return (
     <>
-      {/* Slide con flechas, nombre centrado, etc. */}
       <SlideMenu
         sections={sections}
         selectedSection={selectedSection}
@@ -91,7 +68,6 @@ const Menu = () => {
         onOpenDrawer={openDrawer}
       />
 
-      {/* Drawer de categorías (solo se ve si showDrawer === true) */}
       {showDrawer && (
         <CategoryDrawer
           sections={sections}
@@ -100,7 +76,6 @@ const Menu = () => {
         />
       )}
 
-      {/* Lista de artículos de la sección seleccionada */}
       <MenuContent articles={articles} />
     </>
   );

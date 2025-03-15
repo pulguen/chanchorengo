@@ -1,9 +1,10 @@
+// src/Components/Menu/CategoryDrawer.jsx
 import { useEffect } from "react";
 import PropTypes from "prop-types";
 import "../../Styles/CategoryDrawer.css";
 
 const CategoryDrawer = ({ sections, onSelectSection, onClose }) => {
-  // Bloqueamos el scroll del body mientras el drawer está abierto
+  // Bloqueamos el scroll del body mientras el drawer esté abierto
   useEffect(() => {
     const originalStyle = window.getComputedStyle(document.body).overflow;
     document.body.style.overflow = "hidden";
@@ -28,7 +29,7 @@ const CategoryDrawer = ({ sections, onSelectSection, onClose }) => {
               className="drawer-item"
               onClick={() => {
                 onSelectSection(section);
-                onClose(); // Cierra el drawer al seleccionar
+                onClose();
               }}
             >
               {section.nombre}

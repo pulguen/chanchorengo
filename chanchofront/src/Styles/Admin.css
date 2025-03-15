@@ -1,34 +1,83 @@
-/* Admin.css Efecto hover y estado activo para secciones */
+/* Admin.css */
+
+/* Efecto hover y estado activo para items de sección */
 .section-item:hover {
-    background-color: #f8f9fa;
-    transition: background-color 0.3s ease;
-  }
-  .section-item.active {
-    color: black;
-    background-color: #e2e6ea;
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-  }
-  
-  /* Estilo para la card de artículos */
-  .articles-card {
-    position: fixed;
-    top: 100px;          /* Ajusta según tus necesidades */
-    right: 20px;         /* Ajusta la posición horizontal */
-    width: 400px;        /* O el ancho que prefieras */
-    max-height: calc(100vh - 120px);  /* Asegura que no se salga de la pantalla */
-    overflow-y: auto;    /* Permite scroll vertical si el contenido es muy alto */
-    z-index: 1050;
-    transition: transform 0.3s ease;
-    background: #fff;
-    padding: 1rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-  }
-  
-  .counter-info {
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
-  }
-  .counter-info p {
-    margin: 0.25rem 0;
-  }
+  background-color: #f8f9fa;
+  transition: background-color 0.3s ease;
+}
+.section-item.active {
+  color: black;
+  background-color: #e2e6ea;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Estilo para la card de artículos (panel de artículos) */
+.articles-card {
+  position: fixed;
+  top: 100px;          /* Ajusta según tus necesidades */
+  right: 20px;         /* Ajusta la posición horizontal */
+  width: 400px;        /* O el ancho que prefieras */
+  max-height: calc(100vh - 120px);  /* Para que no se desborde */
+  overflow-y: auto;
+  z-index: 1050;
+  transition: transform 0.3s ease;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* Estilos para el contenido del menú (si se usa en alguna sección) */
+.menu-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem;
+}
+
+/* Tarjeta individual de artículo */
+.article-card {
+  border: 1px solid #ddd;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.article-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.article-title {
+  flex: 1;
+  font-size: 1.1rem;
+  margin: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.article-price {
+  font-size: 1rem;
+  color: #007bff;
+  font-weight: bold;
+  text-align: right;
+}
+
+.article-ingredientes {
+  font-size: 0.9rem;
+  color: #555;
+  margin: 0.5rem 0;
+  text-align: left;
+}
+
+.article-extra {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.85rem;
+  color: #777;
+  text-align: left;
+}

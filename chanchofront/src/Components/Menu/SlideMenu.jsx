@@ -1,3 +1,4 @@
+// src/Components/Menu/SlideMenu.jsx
 import { useRef, useEffect } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Navigation, Pagination, Autoplay } from "swiper/modules";
@@ -13,12 +14,10 @@ import "swiper/css/autoplay";
 const SlideMenu = ({ sections, selectedSection, onSelectSection, onOpenDrawer }) => {
   const swiperRef = useRef(null);
 
-  // Reposicionar el slider al índice de la sección seleccionada
   useEffect(() => {
     if (selectedSection && swiperRef.current) {
       const index = sections.findIndex((sec) => sec.id === selectedSection.id);
       if (index >= 0) {
-        // Usamos slideToLoop para mover el slider al índice correspondiente
         swiperRef.current.slideToLoop(index);
       }
     }
@@ -46,14 +45,12 @@ const SlideMenu = ({ sections, selectedSection, onSelectSection, onOpenDrawer })
           delay: 20000,
           disableOnInteraction: false,
         }}
-        // Guardamos la instancia del swiper en un ref para reposicionar
         onSwiper={(swiper) => {
           swiperRef.current = swiper;
         }}
         onSlideChange={(swiper) => {
           const realIndex = swiper.realIndex;
           if (sections[realIndex]) {
-            // Actualizamos la sección seleccionada al cambiar de slide
             onSelectSection(sections[realIndex]);
           }
         }}
@@ -61,7 +58,6 @@ const SlideMenu = ({ sections, selectedSection, onSelectSection, onOpenDrawer })
         {sections.map((section) => (
           <SwiperSlide key={section.id}>
             <div className="menu-section text-center p-3">
-              {/* Nombre de la sección en grande, clickable para abrir el Drawer */}
               <h2
                 style={{ cursor: "pointer" }}
                 onClick={(e) => {
