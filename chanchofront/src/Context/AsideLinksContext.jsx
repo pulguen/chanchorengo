@@ -13,8 +13,6 @@ export const AsideLinksProvider = ({ children }) => {
     ],
     // Puedes agregar más subsistemas aquí...
   };
-
-
   
   return (
     <AsideLinksContext.Provider value={subsystemsLinks}>

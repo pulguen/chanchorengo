@@ -1,3 +1,4 @@
+// File: chanchofront/src/Page/Home/Home.jsx
 import Menu from '../../Components/Menu/Menu';
 import Mapbar from '../../Components/Mapbar/Mapbar';
 import CallButton from '../../Components/CallButton/CallButton';

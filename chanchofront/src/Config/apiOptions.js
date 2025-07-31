@@ -1,3 +1,5 @@
+// File: chanchofront/src/Config/apiOptions.js
+
 const apiOptions = {
     method: 'GET',
     headers: {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { db } from "../../Firebase/firebase";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
@@ -7,16 +7,15 @@ import MenuContent from "./MenuContent";
 import CategoryDrawer from "./CategoryDrawer";
 
 const Menu = () => {
-  // Secciones (solo las visibles)
   const [sections, setSections] = useState([]);
-  // Sección seleccionada
   const [selectedSection, setSelectedSection] = useState(null);
-  // Artículos de la sección seleccionada (solo los visibles)
   const [articles, setArticles] = useState([]);
-  // Control para mostrar/ocultar el CategoryDrawer
   const [showDrawer, setShowDrawer] = useState(false);
 
-  // 1. Cargar secciones (lectura única)
+  // *** Nuevo: cache en memoria (referencia mutable) ***
+  const articlesCache = useRef({}); // { [sectionId]: [artículos] }
+
+  // 1. Cargar secciones solo una vez al montar
   useEffect(() => {
     const fetchSections = async () => {
       try {
@@ -26,12 +25,9 @@ const Menu = () => {
           id: doc.id,
           ...doc.data(),
         }));
-
-        // Filtramos solo secciones con visible !== false
         const visibleSections = data.filter((sec) => sec.visible !== false);
-
         setSections(visibleSections);
-        // Si no hay sección seleccionada, escogemos la primera visible
+        // Si no hay sección seleccionada, escoger la primera visible
         if (!selectedSection && visibleSections.length > 0) {
           setSelectedSection(visibleSections[0]);
         }
@@ -39,16 +35,24 @@ const Menu = () => {
         console.error("Error al obtener secciones:", err);
       }
     };
-
     fetchSections();
-  }, [selectedSection]);
+    // eslint-disable-next-line
+  }, []);
 
-  // 2. Cargar artículos de la sección seleccionada (lectura única, filtrados por visible)
+  // 2. Cargar artículos de la sección seleccionada, pero solo si no están en cache
   useEffect(() => {
     if (!selectedSection) {
       setArticles([]);
       return;
     }
+
+    // Si ya están en cache, úsalos
+    if (articlesCache.current[selectedSection.id]) {
+      setArticles(articlesCache.current[selectedSection.id]);
+      return;
+    }
+
+    // Si NO están en cache, consulta y guarda
     const fetchArticles = async () => {
       try {
         const subRef = collection(db, "secciones", selectedSection.id, "articulos");
@@ -58,9 +62,8 @@ const Menu = () => {
           id: doc.id,
           ...doc.data(),
         }));
-
-        // Filtramos artículos con visible !== false
         const visibleArticles = data.filter((art) => art.visible !== false);
+        articlesCache.current[selectedSection.id] = visibleArticles; // Guardar en cache
         setArticles(visibleArticles);
       } catch (err) {
         console.error("Error al obtener artículos:", err);
@@ -70,12 +73,8 @@ const Menu = () => {
     fetchArticles();
   }, [selectedSection]);
 
-  // Abre el CategoryDrawer (por ejemplo, en móviles)
-  const openDrawer = () => {
-    setShowDrawer(true);
-  };
-
-  // Cuando se selecciona una sección en el drawer, la asignamos y cerramos
+  // Drawer para categorías
+  const openDrawer = () => setShowDrawer(true);
   const handleSelectSectionFromDrawer = (sec) => {
     setSelectedSection(sec);
     setShowDrawer(false);
@@ -83,15 +82,12 @@ const Menu = () => {
 
   return (
     <>
-      {/* Slide con flechas, nombre centrado, etc. */}
       <SlideMenu
         sections={sections}
         selectedSection={selectedSection}
         onSelectSection={setSelectedSection}
         onOpenDrawer={openDrawer}
       />
-
-      {/* Drawer de categorías (solo se ve si showDrawer === true) */}
       {showDrawer && (
         <CategoryDrawer
           sections={sections}
@@ -99,8 +95,6 @@ const Menu = () => {
           onClose={() => setShowDrawer(false)}
         />
       )}
-
-      {/* Lista de artículos de la sección seleccionada */}
       <MenuContent articles={articles} />
     </>
   );

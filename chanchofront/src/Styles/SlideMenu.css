@@ -1,95 +1,184 @@
-/* Contenedor principal del slide */
 .slide-menu {
-  max-width: 100%;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto 1rem auto;
+  position: relative;
+  padding: 0;
+}
+
+.menu-swiper {
+  width: 100% !important;
+  box-sizing: border-box;
+  /* Fuerza el swiper a no sobresalir */
+  padding: 0;
+}
+
+/* Slide y su tarjeta */
+.swiper-slide {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.menu-section {
+  background: rgba(255, 255, 255, 0.96);
+  padding: 1.8rem 0.5rem 1.3rem 0.5rem;
+  border-radius: 14px;
   margin: 0 auto;
-  margin-bottom: 0.75rem; /* Ajusta según tu preferencia */
+  width: 96%;
+  min-height: 105px;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.09);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  transition: box-shadow 0.22s, border 0.18s, background 0.15s;
+  border: 2px solid transparent;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+  outline: none;
   position: relative;
 }
 
-/* Si deseas envolver el Swiper en un contenedor con borde/sombra */
-.swiper-container {
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+.menu-section.active {
+  border: 2.2px solid #0069d9;
+  box-shadow: 0 6px 18px rgba(0, 105, 217, 0.14), 0 1px 6px rgba(0,0,0,0.07);
+  background: linear-gradient(90deg, #f7fbff 80%, #f0f5ff 100%);
 }
 
-/* Sección individual dentro del slide */
-.menu-section {
-  background: rgba(255, 255, 255, 0.95);
-  padding: 0.6rem 1rem; /* Más compacto que antes */
-  border-radius: 6px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  margin: 0 auto;
-  max-width: 95%;
-  text-align: center;
+.menu-section:active,
+.menu-section:focus-visible {
+  background: #e9f4ff;
 }
 
-.menu-section:hover {
-  transform: scale(1.02);
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-}
-
-/* Estilos para el título de la sección */
 .menu-section h2 {
-  font-size: 1.3rem; /* Un poco más pequeño */
-  color: #333;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
-  margin: 0; /* Sin margen extra */
-  word-break: break-word; /* Permite partir texto en varias líneas */
-}
-
-/* Descripción opcional */
-.menu-section p {
-  font-size: 0.9rem;
-  color: #555;
-  margin: 0.4rem 0 0;
-  word-break: break-word;
-}
-
-/* Si usas un <button> o un link para abrir el Drawer, puedes darle estilo aquí */
-.section-button {
-  background: none;
-  border: none;
-  color: #007bff;
-  font-size: inherit;
-  cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #143063;
   margin: 0;
-  display: inline-block;
+  word-break: break-word;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.08);
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em;
+  cursor: pointer;
+  transition: color 0.16s;
+  position: relative;
 }
 
-/* Flechas de navegación */
-.swiper-button-prev,
-.swiper-button-next {
+.menu-section h2::after {
+  content: '▼';
+  font-size: 1.08em;
   color: #007bff;
-  transition: color 0.3s ease;
-  margin: 0.3rem; /* Ajusta el margen para acercar las flechas */
+  margin-left: 0.45em;
+  opacity: 0.88;
+  transition: transform 0.12s;
+}
+.menu-section:active h2::after,
+.menu-section:focus-visible h2::after {
+  transform: translateY(2px) scale(1.1);
 }
 
-.swiper-button-prev:hover,
-.swiper-button-next:hover {
-  color: #0056b3;
+/* ===== FLECHAS Swiper ===== */
+.menu-swiper .swiper-button-prev,
+.menu-swiper .swiper-button-next {
+  color: #007bff;
+  background: #fff !important;
+  border: 2.2px solid #007bff;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 1.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  outline: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: background 0.13s, color 0.13s, border 0.13s, box-shadow 0.13s;
+  user-select: none;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+  opacity: 0.99;
 }
 
-/* Puntos de paginación */
-.swiper-pagination-bullet {
+.menu-swiper .swiper-button-prev {
+  left: 14px !important;
+  right: auto;
+}
+.menu-swiper .swiper-button-next {
+  right: 14px !important;
+  left: auto;
+}
+
+.menu-swiper .swiper-button-prev:hover,
+.menu-swiper .swiper-button-next:hover,
+.menu-swiper .swiper-button-prev:active,
+.menu-swiper .swiper-button-next:active {
+  background: #007bff !important;
+  color: #fff !important;
+  border: 2.2px solid #0056b3;
+}
+
+/* Elimina cualquier borde/foco azul */
+.menu-swiper .swiper-button-prev:focus,
+.menu-swiper .swiper-button-next:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* === BULLETS (paginación) === */
+.menu-swiper .swiper-pagination-bullet {
   background: #007bff;
-  opacity: 0.7;
-  transition: opacity 0.3s ease;
+  opacity: 0.45;
+  transition: opacity 0.22s;
 }
-
-.swiper-pagination-bullet-active {
+.menu-swiper .swiper-pagination-bullet-active {
   opacity: 1;
 }
 
-/* Ajustes para pantallas pequeñas */
+/* MOBILE: Ajusta margenes/flechas para pantallas chicas */
 @media (max-width: 480px) {
+  .slide-menu {
+    max-width: 99vw;
+    margin-bottom: 0.6rem;
+  }
   .menu-section {
-    padding: 0.6rem 0.8rem;
+    padding: 1.0rem 0.3rem 1.0rem 0.3rem;
+    min-height: 75px;
+    width: 98%;
+    border-radius: 9px;
   }
   .menu-section h2 {
-    font-size: 1.3rem;
-    margin-bottom: 0.5rem;
+    font-size: 1.11rem;
   }
+  .menu-swiper .swiper-button-prev,
+  .menu-swiper .swiper-button-next {
+    width: 28px;
+    height: 28px;
+    font-size: 1.08rem;
+    left: 3px !important;
+    right: 3px !important;
+  }
+  .menu-swiper .swiper-button-prev {
+    left: 3px !important;
+    right: auto;
+  }
+  .menu-swiper .swiper-button-next {
+    right: 3px !important;
+    left: auto;
+  }
+}
+
+/* Elimina cualquier borde/foco azul para mobile también */
+.menu-swiper .swiper-button-prev:focus,
+.menu-swiper .swiper-button-next:focus {
+  outline: none !important;
+  box-shadow: none !important;
 }

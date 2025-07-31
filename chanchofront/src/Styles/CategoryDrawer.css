@@ -1,3 +1,7 @@
+/* CategoryDrawer.css
+ * Estilos para el drawer de categorías en la aplicación ChancoFront.
+ * Este archivo define el estilo del overlay, el drawer y sus elementos internos.
+ */
 .category-drawer-overlay {
   position: fixed;
   top: 0;

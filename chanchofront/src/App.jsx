@@ -6,24 +6,28 @@ import Home from './Page/Home/Home';
 import Login from './Page/Login/Login'; // Página de login
 import Admin from './Page/Admin/Admin'; // Página de administrador
 import ProtectedRoute from './Components/Common/ProtectedRoute/ProtectedRoute'; // Ruta protegida
+import { MenuProvider } from "./Context/MenuProvider";
+
 
 function App() {
   return (
     <Router>
-      <GlobalLayout>
-        <Routes>
-          <Route path="/" element={<Home />} /> {/* Página principal */}
-          <Route path="/login" element={<Login />} /> {/* Página de login */}
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute>
-                <Admin />
-              </ProtectedRoute>
-            }
-          /> {/* Ruta protegida */}
-        </Routes>
-      </GlobalLayout>
+      <MenuProvider>
+        <GlobalLayout>
+          <Routes>
+            <Route path="/" element={<Home />} /> {/* Página principal */}
+            <Route path="/login" element={<Login />} /> {/* Página de login */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <Admin />
+                </ProtectedRoute>
+              }
+            /> {/* Ruta protegida */}
+          </Routes>
+        </GlobalLayout>
+      </MenuProvider>
     </Router>
   );
 }
