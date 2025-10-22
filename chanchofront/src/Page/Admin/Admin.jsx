@@ -3,7 +3,6 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "../../Firebase/firebase";
 import {
   collection,
-  collectionGroup,
   doc,
   onSnapshot,
   addDoc,
@@ -34,6 +33,10 @@ import "../../Styles/Admin.css";
 const Admin = () => {
   // Estados para secciones
   const [secciones, setSecciones] = useState([]);
+  const [hiddenArticlesCount, setHiddenArticlesCount] = useState(0);
+  const [showHiddenArticles, setShowHiddenArticles] = useState(false);
+  // Count derivado de secciones ocultas (no hace falta estado separado)
+  const hiddenSectionsCount = secciones.filter((s) => s.visible === false).length;
   const [nuevaSeccion, setNuevaSeccion] = useState("");
   const [editSeccionId, setEditSeccionId] = useState(null);
   const [editNombreSeccion, setEditNombreSeccion] = useState("");
@@ -94,6 +97,7 @@ const Admin = () => {
   useEffect(() => {
     if (!seccionSeleccionada) {
       setArticulos([]);
+      setShowHiddenArticles(false); // resetear al cambiar o cerrar sección
       return;
     }
     const q = query(
@@ -106,19 +110,74 @@ const Admin = () => {
     return () => unsubscribe();
   }, [seccionSeleccionada]);
 
-  // Cargar total global de artículos de todas las secciones usando collectionGroup
-  useEffect(() => {
-    const fetchTotalArticles = async () => {
-      try {
-        const q = query(collectionGroup(db, "articulos"));
-        const snapshot = await getDocs(q);
-        setTotalArticulos(snapshot.docs.length);
-      } catch (error) {
-        console.error("Error al obtener el total de artículos:", error);
+  // Función reutilizable para recalcular totales y ocultos
+  const recalcTotals = async (sectionsParam) => {
+    try {
+      const sectionsToUse = Array.isArray(sectionsParam) ? sectionsParam : secciones;
+      if (!sectionsToUse || sectionsToUse.length === 0) {
+        setTotalArticulos(0);
+        setHiddenArticlesCount(0);
+        return;
       }
-    };
-    fetchTotalArticles();
-  }, []);
+      let total = 0;
+      let hidden = 0;
+      await Promise.all(
+        sectionsToUse.map(async (sec) => {
+          const q = collection(db, "secciones", sec.id, "articulos");
+          const snapshot = await getDocs(q);
+          total += snapshot.size || snapshot.docs.length || 0;
+          hidden += snapshot.docs.filter((d) => d.data()?.visible === false).length;
+        })
+      );
+      setTotalArticulos(total);
+      setHiddenArticlesCount(hidden);
+    } catch (error) {
+      console.error("Error al obtener el total de artículos por sección:", error);
+    }
+  };
+
+  // Recalcular cuando cambian las secciones (listener ya actualiza secciones)
+  useEffect(() => {
+    recalcTotals();
+  }, [secciones]);
+
+  // Computed: ¿todas las secciones están visibles?
+  const allSectionsVisible = secciones.length > 0 && secciones.every((s) => s.visible !== false);
+
+  // clases dinámicas para badges de ocultos
+  const sectionBadgeClass = `hidden-count-badge ${hiddenSectionsCount > 0 ? "has-hidden" : "no-hidden"}`;
+  const articleBadgeClass = `hidden-count-badge ${hiddenArticlesCount > 0 ? "has-hidden" : "no-hidden"}`;
+  
+  // Switch para ocultar/mostrar todas las secciones
+  const toggleAllSectionsVisibility = async () => {
+    if (!secciones || secciones.length === 0) return;
+    const makeVisible = !allSectionsVisible; // si todas visibles => makeVisible=false (ocultar), else mostrar
+    try {
+      const updates = secciones.map((sec) =>
+        updateDoc(doc(db, "secciones", sec.id), { visible: makeVisible })
+      );
+      await Promise.all(updates);
+      // Actualización optimista localmente y recalcular usando la lista actualizada
+      const updated = secciones.map((s) => ({ ...s, visible: makeVisible }));
+      setSecciones(updated);
+      await recalcTotals(updated);
+      Swal.fire({
+        title: "¡Actualizado!",
+        text: makeVisible ? "Todas las secciones están visibles." : "Todas las secciones han sido ocultadas.",
+        icon: "success",
+        timer: 1400,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("Error al cambiar visibilidad de todas las secciones:", error);
+      Swal.fire({
+        title: "Error",
+        text: "No se pudo actualizar la visibilidad de las secciones.",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
+    }
+  };
 
   // Función para alternar visibilidad de una sección
   const toggleSectionVisibility = async (section) => {
@@ -149,6 +208,8 @@ const Admin = () => {
         doc(db, "secciones", seccionSeleccionada.id, "articulos", article.id),
         { visible: !article.visible }
       );
+      // actualizar contadores después del cambio (usa estado actual de secciones)
+      await recalcTotals();
       Swal.fire({
         title: "¡Actualizado!",
         text: `El artículo se ha ${article.visible ? "desactivado" : "activado"} correctamente.`,
@@ -327,6 +388,7 @@ const Admin = () => {
           doc(db, "secciones", seccionSeleccionada.id, "articulos", editArticuloId),
           articuloData
         );
+        await recalcTotals();
         Swal.fire({
           title: "¡Actualizado!",
           text: "El artículo ha sido actualizado correctamente.",
@@ -341,6 +403,7 @@ const Admin = () => {
           collection(db, "secciones", seccionSeleccionada.id, "articulos"),
           { ...articuloData, orden, visible: true }
         );
+        await recalcTotals();
         Swal.fire({
           title: "¡Agregado!",
           text: "El artículo ha sido agregado correctamente.",
@@ -400,6 +463,7 @@ const Admin = () => {
       await deleteDoc(
         doc(db, "secciones", seccionSeleccionada.id, "articulos", articuloId)
       );
+      await recalcTotals();
       Swal.fire({
         title: "Eliminado",
         text: "El artículo ha sido eliminado.",
@@ -446,20 +510,48 @@ const Admin = () => {
 
   return (
     <div className="container mt-5">
-      <h1>Panel de Administración</h1>
-      <button className="btn btn-danger mb-3" onClick={() => signOut(auth)}>
-        Cerrar Sesión
-      </button>
+      <div className="d-flex align-items-center justify-content-between mb-3 top-controls">
+        <div>
+          <button className="btn btn-danger" onClick={() => signOut(auth)}>
+            Cerrar Sesión
+          </button>
+          <button
+            className={`btn ms-2 ${allSectionsVisible ? "btn-outline-danger" : "btn-outline-success"} btn-toggle-all`}
+            onClick={toggleAllSectionsVisibility}
+          >
+            {allSectionsVisible ? "Ocultar todas" : "Mostrar todas"}
+          </button>
+        </div>
+        <div className="hidden-badges">
+          <span className={sectionBadgeClass} title="Secciones ocultas">
+            Secciones ocultas: {hiddenSectionsCount}
+          </span>
+          <span className={articleBadgeClass} title="Artículos ocultos">
+            Artículos ocultos: {hiddenArticlesCount}
+          </span>
+        </div>
+      </div>
 
-      {/* Contador de secciones y artículos */}
-      <div className="counter-info mb-4">
-        <p>Total de secciones: {secciones.length}</p>
-        <p>Total de artículos: {totalArticulos}</p>
-        <p>
-          {seccionSeleccionada
-            ? `Artículos en la sección seleccionada: ${articulos.length}`
-            : "Selecciona una sección para ver sus artículos"}
-        </p>
+      {/* Contador de secciones y artículos (mejorado) */}
+      <div className="counter-info mb-4 enhanced-counter">
+        <div className="counter-card">
+          <div className="counter-number">{secciones.length}</div>
+          <div className="counter-label">Secciones</div>
+        </div>
+        <div className="counter-card">
+          <div className="counter-number">{totalArticulos}</div>
+          <div className="counter-label">Artículos (total)</div>
+        </div>
+        <div className="counter-card">
+          <div className="counter-number">
+            {seccionSeleccionada ? articulos.length : "-"}
+          </div>
+          <div className="counter-label">
+            {seccionSeleccionada
+              ? `Artículos en "${seccionSeleccionada.nombre}"`
+              : "Selecciona una sección"}
+          </div>
+        </div>
       </div>
 
       {/* Advertencia si no hay secciones */}
@@ -533,64 +625,85 @@ const Admin = () => {
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
       >
-        <SortableContext items={secciones.map((sec) => sec.id)} strategy={verticalListSortingStrategy}>
-          <ul className="list-group">
-            {secciones
-              .filter((sec) =>
-                sec.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-              )
-              .map((sec) => (
-                <SortableItem
-                  key={sec.id}
-                  id={sec.id}
-                  nombre={sec.nombre}
-                  visible={sec.visible !== false}
-                  onDelete={() => deleteSeccion(sec.id)}
-                  onEdit={() => startEditSeccion(sec.id, sec.nombre, sec.visible)}
-                  onClick={() => setSeccionSeleccionada(sec)}
-                  isActive={seccionSeleccionada && sec.id === seccionSeleccionada.id}
-                  onToggleVisibility={() => toggleSectionVisibility(sec)}
-                />
-              ))}
-          </ul>
-        </SortableContext>
+        {/*
+          Mostrar solo las secciones filtradas y pasar sus IDs a SortableContext
+        */}
+        {(() => {
+          const displayedSecciones = secciones.filter((sec) =>
+            sec.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+          return (
+            <SortableContext items={displayedSecciones.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+              <ul className="list-group">
+                {displayedSecciones.map((sec) => (
+                  <SortableItem
+                    key={sec.id}
+                    id={sec.id}
+                    nombre={sec.nombre}
+                    visible={sec.visible !== false}
+                    onDelete={() => deleteSeccion(sec.id)}
+                    onEdit={() => startEditSeccion(sec.id, sec.nombre, sec.visible)}
+                    onClick={() => setSeccionSeleccionada(sec)}
+                    isActive={seccionSeleccionada && sec.id === seccionSeleccionada.id}
+                    onToggleVisibility={() => toggleSectionVisibility(sec)}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          );
+        })()}
       </DndContext>
 
       {/* PANEL DE ARTÍCULOS (mostrado en una card sobrepuesta) */}
       {seccionSeleccionada && (
         <div className="articles-card card p-3">
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h3 className="card-title">Artículos en {seccionSeleccionada.nombre}</h3>
+            <div className="d-flex align-items-center">
+              <h3 className="card-title mb-0">Artículos en {seccionSeleccionada.nombre}</h3>
+              <button
+                className={`btn btn-sm ms-3 show-hidden-btn ${showHiddenArticles ? "btn-primary" : "btn-outline-primary"}`}
+                onClick={() => setShowHiddenArticles((v) => !v)}
+                title="Mostrar/ocultar artículos marcados como ocultos"
+              >
+                {showHiddenArticles ? "Ocultar visibles" : `Ver ocultos (${articulos.filter(a => a.visible === false).length})`}
+              </button>
+            </div>
             <button className="btn btn-secondary" onClick={() => setSeccionSeleccionada(null)}>
               Cerrar
             </button>
           </div>
+          
 
-          {/* Listado de Artículos */}
-          <div className="mb-4">
-            <h4>Lista de Artículos</h4>
-            <DndContext
-              sensors={sensorsArticulos}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEndArticulo}
-            >
-              <SortableContext items={articulos.map((art) => art.id)} strategy={verticalListSortingStrategy}>
-                <ul className="list-group">
-                  {articulos.map((art) => (
-                    <SortableItem
-                      key={art.id}
-                      id={art.id}
-                      nombre={art.nombre}
-                      visible={art.visible !== false}
-                      onDelete={() => deleteArticulo(art.id)}
-                      onEdit={() => startEditArticulo(art)}
-                      onToggleVisibility={() => toggleArticleVisibility(art)}
-                    />
-                  ))}
-                </ul>
-              </SortableContext>
-            </DndContext>
-          </div>
+           {/* Listado de Artículos */}
+           <div className="mb-4">
+             <h4>Lista de Artículos</h4>
+             <DndContext
+               sensors={sensorsArticulos}
+               collisionDetection={closestCenter}
+               onDragEnd={handleDragEndArticulo}
+             >
+               {(() => {
+                 const displayedArticulos = showHiddenArticles ? articulos : articulos.filter((a) => a.visible !== false);
+                 return (
+                   <SortableContext items={displayedArticulos.map((a) => a.id)} strategy={verticalListSortingStrategy}>
+                     <ul className="list-group">
+                       {displayedArticulos.map((art) => (
+                         <SortableItem
+                           key={art.id}
+                           id={art.id}
+                           nombre={showHiddenArticles && art.visible === false ? `(OCULTO) ${art.nombre}` : art.nombre}
+                           visible={art.visible !== false}
+                           onDelete={() => deleteArticulo(art.id)}
+                           onEdit={() => startEditArticulo(art)}
+                           onToggleVisibility={() => toggleArticleVisibility(art)}
+                         />
+                       ))}
+                     </ul>
+                   </SortableContext>
+                 );
+               })()}
+             </DndContext>
+           </div>
 
           {/* Formulario para Agregar/Editar Artículo (colapsable) */}
           {mostrarFormularioArticulo || editArticuloId ? (
